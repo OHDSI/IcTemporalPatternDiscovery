@@ -1,0 +1,13 @@
+Package: IcTemporalPatternDiscovery
+Type: Package
+Title: Population-level estimation method that estimates risk by combining a self-controlled and cohort design.
+Version: 1.0
+Date: 2014-12-22
+Author: Tomas Bergvall
+Maintainer: Tomas Bergvall <tomas.bergvall@who-umc.org>
+Description: HOMEWORK-  add more
+Depends:
+    SqlRender,
+    DatabaseConnector,
+    ggplot2
+License: Apache 2.0
