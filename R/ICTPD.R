@@ -20,343 +20,296 @@
 # @author Tomas Bergvall
 
 
-# Loads the results from the server and adds them to a results object
-addResults <- function(results,conn) {
-  sql <- "SELECT * FROM @table WHERE sourceName = '@sourceName' AND analysisId IN (@analysisIds) AND exposureConceptId IN (@exposureConceptIds) AND outcomeConceptId IN (@outcomeConceptIds)"
-  sql <- renderSql(sql,
-                   table = results$resultsTable, 
-                   sourceName = results$sourceName,
-                   analysisIds = results$analysisIds, 
-                   exposureConceptIds = results$exposureOutcomePairs$exposureConceptId,
-                   outcomeConceptIds = results$exposureOutcomePairs$outcomeConceptId
-  )$sql
-  results$effectEstimates <- dbGetQuery(conn,sql)
-  sql <- "SELECT * FROM @table WHERE analysisId IN (@analysisIds)" 
-  sql <- renderSql(sql,
-                   table = results$analysisTable, 
-                   analysisIds = results$analysisIds
-  )$sql
-  results$analyses <- dbGetQuery(conn,sql)
-  results
-}
-
 #' @title IC temporal pattern discovery
 #'
 #' @description
 #' \code{Ictpd} generates population-level estimation from OMOP CDMv4 instance by combining a self-controlled design with a cohort design.
 #'
-#' @usage 
-#' ictpd(connectionDetails, cdmSchema, resultsSchema, resultsTablePrefix = "ictpd", createResultsTable = TRUE, sourceName = "", exposureOutcomePairs, exposureTable = "drug_era", outcomeTable = "condition_era")
-#' ictpd(connectionDetails, cdmSchema, resultsSchema, resultsTablePrefix = "ictpd", createResultsTable = TRUE, sourceName = "", exposureOutcomePairs, exposureTable = "drug_era", outcomeTable = "condition_era", analysisId = 1, drugTypeConceptIdList = c(38000182), conditionTypeConceptIdList = c(38000247))
-#' ictpd(connectionDetails, cdmSchema, resultsSchema, resultsTablePrefix = "ictpd", createResultsTable = TRUE, sourceName = "", exposureOutcomePairs, exposureTable = "drug_era", outcomeTable = "condition_era", analysisId = 1, drugTypeConceptIdList = c(38000182), conditionTypeConceptIdList = c(38000247), controlPeriodStart = -1080, controlPeriodEnd = -361, multipleControlPeriods = 110, multipeObservationPeriods = '10000', shrinkage = 0.50, icPercentile = 0.025, metric = "IC025", censor = 0) 
-#' 
 #' @details
 #' Population-level estimation method that estimates risk by combining a self-controlled and cohort design.
 #'  
 #' @references
-#' Norén GN, Bate A, Hopstadius J, Star K, Edwards IR.  Temporal Pattern Discovery for Trends and Transient Effect: Its Application to Patient Reocrds. by combining a self-controlled design with a cohort design
+#' Noren GN, Bate A, Hopstadius J, Star K, Edwards IR.  Temporal Pattern Discovery for Trends and Transient Effect: Its Application to Patient Reocrds. by combining a self-controlled design with a cohort design
 #' In: Proceedings of the fourteenth ACM SIGKDD International Conference on Knowledge Discovery and Data Mining (KDD'08).ACM Press, New York, pp 963-971
 #'  
-#' @param connectionDetails  An R object of type \code{ConnectionDetails} created using the function \code{createConnectionDetails} in the \code{DatabaseConnector} package.
-#' @param cdmSchema  		Name of database schema that contains OMOP CDM and vocabulary.
-#' @param resultsSchema		Name of database schema that we can write results to.
-#' @param resultsTablePrefix  Prefix used for the result tables in the \code{resultsSchema}. 
-#' @param createResultsTable If true, a new empty table will be created to store the results. If false, results will be inserted into the existing table.
-#' @param sourceName		Name of the database, as recorded in results.
-#' @param exposureOutcomePairs  A data frame with at least two columns:
-#' \itemize{
-#'   \item{"exposureConceptId" containing the drug_concept_ID or cohort_concept_id of the exposure variable}
-#'   \item{"outcomeConceptId" containing the condition_concept_ID or cohort_concept_id of the outcome variable}
-#' }
-#' @param exposureTable	\code{exposureTable="drugEra"} or \code{exposureTable="cohort"}.
-#' @param outcomeTable	\code{outcomeTable="conditionEra"} or \code{outcomeTable="cohort"}.
-#' @param analysisId  	A unique identifier that can later be used to identify the results of this analysis.
-
-#' @param drugTypeConceptIdList	Which drug_type to use:  generally only use 1 value (ex:  30d era).
-#' @param conditionTypeConceptIdList	Which condition_type to use:  generally only use 1 value (ex:  30d era).
-#' @param shrinkage	shrinkage used in IRR calculations, required >0 to deal with 0 case counts, but larger number means more shrinkage. default is 0.5
-#' @param ictpdAnalysisDetails  object specifyng a set of analysis choices.
-#' @param ictpdAnalysesDetails  object specifyng one or several sets of analysis choices.
+#' @template StudyParameters 
 #' 
-#' @param controlPeriodStart start of the control period - can be set between -99999 and 0, default is -1080
-#' @param controlPeriodEnd end of the control period - can be set between -99999 and 0, default is -361
-#' @param multipleControlPeriods Defines the control periods to use where 100 means the control period defined by controlPeriodStart/End, 010 means the period -30 to -1 day before prescription and 001 means the contorl period on the day of prescription
-#' @param multipleObservationPeriods Defines the observation periods to use 10000 is 1-30 days, 01000 is 1 to 360 days, 00100 is 31 to 90 days, 00010 is 91 to 180 and 00001 is 721 to 1080 days after prescription default is '10000'
-#' @param icPercentile the lower bound of the credibility interval for the IC values (IClow). default is 0.025,
-#' @param metric defines wether the output will contain the point estimate or the lower bound. Available input is 'IC and 'IC025' default is 'IC025'
-#' @param censor a flag indicating wether the method should censor the observation period at the end of exposure or not. Available input is 0 or 1 with default = 0. 
-
-#' @return An object of type \code{ictpdResults} containing details for connecting to the database containing the results 
+#' @param analysisId  A unique identifier that can later be used to identify the results of this analysis.
+#' @param storeResultsInDatabase Should the results be stored in the database?
+#' @param createOutputTables  Should the output tables be created? If not, they are assumed to exist and data will be appended.
+#' If the value is true and the tables exist they will be overwritten.
+#' @param outputTablePrefix   Prefix used for the result tables in the \code{resultsDatabaseSchema}. 
+#' 
+#' @template GetDataParameters
+#' 
+#' @template IcCalculationParameters
+#'
+#' @return An object of type \code{ictpdResults} containing the results.
+#' 
 #' @examples \dontrun{
-#' 
-#' connectionDetails <- createConnectionDetails(dbms="sql server", server="server_ip", schema="omop_cdm_database")
-#' exposureOutcomePairs = data.frame(outcomeConceptId = c(196794, 196794, 312648), exposureConceptId = c(1501700, 1545958, 1551803))
-#' ictpdResult <- ictpd(connectionDetails, cdmSchema = "OmopCdm_Simulated", resultsSchema = "OmopCdm_Simulated", sourceName = "OmopCdm_Simulated", exposureOutcomePairs = exposureOutcomePairs)
-#' 
+#' connectionDetails <- createConnectionDetails(dbms="sql server", server="server_ip")
+#' ictpdResults <- runIctpd(connectionDetails, cdmDatabaseSchema, resultsDatabaseSchema, exposureOutcomePairs)
+#' ictpdResults
 #' }
 #' @export
-ictpd <- function(...){
-  UseMethod("Ictpd") 
+runIctpd <- function (connectionDetails, 
+                      cdmDatabaseSchema, 
+                      resultsDatabaseSchema, 
+                      exposureOutcomePairs,
+                      exposureDatabaseSchema = cdmDatabaseSchema,
+                      exposureTable = "drug_era",
+                      outcomeDatabaseSchema = cdmDatabaseSchema,
+                      outcomeTable = "condition_era",
+                      drugTypeConceptIdList = c(),
+                      conditionTypeConceptIdList = c(),
+                      
+                      analysisId = 1,
+                      storeResultsInDatabase = FALSE,
+                      createOutputTables = TRUE,
+                      outputTablePrefix = "ictpd",
+                      
+                      controlPeriodStart = -1080,
+                      controlPeriodEnd = -361,
+                      riskPeriodStart = 1,
+                      riskPeriodEnd = 30,
+                      censor = FALSE,
+                      
+                      multipleControlPeriods = '110',
+                      multipleRiskPeriods = '10000',
+                      shrinkage = 0.5, 
+                      icPercentile = 0.025,
+                      metric = "IC025"){
+  cdmDatabase <- strsplit(cdmDatabaseSchema ,"\\.")[[1]][1]
+  resultsDatabase <- strsplit(resultsDatabaseSchema ,"\\.")[[1]][1]
+  
+  conn <- connect(connectionDetails)
+  connectionDetails$conn <- conn # Store it so we don't have to open it again
+  
+  sql <- c()
+  
+  if (storeResultsInDatabase){
+    writeLines("Storing parameters")
+    renderedSql <- loadRenderTranslateSql(sqlFilename = "StoreParameters.sql",
+                                          packageName = "IcTemporalPatternDiscovery",
+                                          dbms = connectionDetails$dbms,
+                                          resultsDatabase = resultsDatabase,
+                                          createOutputTables = createOutputTables,
+                                          outputTablePrefix = outputTablePrefix,
+                                          analysisId  = analysisId,
+                                          controlPeriodStart = controlPeriodStart,
+                                          controlPeriodEnd = controlPeriodEnd,
+                                          riskPeriodStart = riskPeriodStart,
+                                          riskPeriodEnd = riskPeriodEnd,
+                                          censor = censor,
+                                          multipleControlPeriods = multipleControlPeriods,
+                                          multipleRiskPeriods = multipleRiskPeriods,
+                                          shrinkage = shrinkage, 
+                                          icPercentile = icPercentile,
+                                          metric = metric)
+    sql <- c(sql,renderedSql)
+    executeSql(conn,renderedSql, progressBar = FALSE, reportOverallTime = FALSE)
+  }
+  
+  ictpdData <- getDbIctpdData(connectionDetails = connectionDetails, 
+                              cdmDatabaseSchema = cdmDatabaseSchema, 
+                              resultsDatabaseSchema = resultsDatabaseSchema, 
+                              exposureOutcomePairs = exposureOutcomePairs,
+                              exposureDatabaseSchema = exposureDatabaseSchema,
+                              exposureTable = exposureTable,
+                              outcomeDatabaseSchema = outcomeDatabaseSchema,
+                              outcomeTable = outcomeTable,
+                              drugTypeConceptIdList = drugTypeConceptIdList,
+                              conditionTypeConceptIdList = conditionTypeConceptIdList,
+                              
+                              controlPeriodStart = controlPeriodStart,
+                              controlPeriodEnd = controlPeriodEnd,
+                              riskPeriodStart = riskPeriodStart,
+                              riskPeriodEnd = riskPeriodEnd,
+                              censor = censor)  
+  
+  ictpdResults <- calculateStatisticsIC(ictpdData = ictpdData, 
+                                        multipleControlPeriods = multipleControlPeriods,
+                                        multipleRiskPeriods = multipleRiskPeriods,
+                                        shrinkage = shrinkage, 
+                                        icPercentile = icPercentile,
+                                        metric = metric)
+  
+  sql <- c(sql,ictpdResults$metaData$sql) 
+  
+  if (storeResultsInDatabase){
+    tableName <- paste(resultsDatabaseSchema,".",outputTablePrefix,"_results",sep="")
+    resultsTable <- ictpdResults$results
+    resultsTable$analysisId <- analysisId
+    if (!createOutputTables){
+      delSql <- "DELETE * FROM @resultsTable WHERE analysisId = @analysisId"
+      delSql <- SqlRender::renderSql(delSql, resultsTable = resultsTable, analysisId = analysisId)$sql
+      delSql <- SqlRender::translateSql(delSql, targetDialect = connectionDetails$dbms)$sql
+      executeSql(delSql, progressBar = FALSE, reportOverallTime = FALSE)
+      sql <- c(sql, delSql) 
+    }
+    ictpdResults$metaData$sql <- sql
+    writeLines("Storing analysis results")
+    DatabaseConnector::dbInsertTable(conn, tableName, resultsTable, dropTableIfExists = createOutputTables, createTable = createOutputTables)
+  }
+  RJDBC::dbDisconnect(conn)
+  connectionDetails$conn <- NULL
+  return(ictpdResults)
 }
 
+#' @title Get ICTPD counts from database
+#' 
+#' @description This function is used to load the counts needed to compute the ICTPD from a database in OMOP CDM format.
+#' 
+#' @template StudyParameters 
+#' 
+#' @template GetDataParameters
+#' 
+#' @return An object of type \code{ictpdData} containing counts that can be used in the \code{\link{calculateStatisticsIC}} function.
+#' 
+#' @template Example
+#' 
 #' @export
-Ictpd.connectionDetails <- function (connectionDetails, 
-                                     cdmSchema, 
-                                     resultsSchema, 
-                                     sourceName = "", 
-                                     exposureOutcomePairs,
-
-                                     resultsTablePrefix = "ictpd", 
-                                     createResultsTable = TRUE,
-                                     exposureTable = "drug_era",
-                                     outcomeTable = "condition_era",
-                                     analysisId = 1,
-                                     
-                                     drugTypeConceptIdList = c(38000182),
-                                     conditionTypeConceptIdList = c(38000247),
-                                     
-                                     controlPeriodStart = -1080,
-                                     controlPeriodEnd = -361,
-                                     customObservationPeriodStart = 1,
-                                     customObservationPeriodEnd = 30, 
-                                     multipleControlPeriods = '110',
-                                     multipleObservationPeriods = '10000',
-                                     shrinkage = 0.50,
-                                     icPercentile = 0.025,
-                                     metric = "IC025",
-                                     censor = 0
-                                     ){
+getDbIctpdData <- function (connectionDetails, 
+                            cdmDatabaseSchema, 
+                            resultsDatabaseSchema, 
+                            exposureOutcomePairs,
+                            exposureDatabaseSchema = cdmDatabaseSchema,
+                            exposureTable = "drug_era",
+                            outcomeDatabaseSchema = cdmDatabaseSchema,
+                            outcomeTable = "condition_era",
+                            drugTypeConceptIdList = c(),
+                            conditionTypeConceptIdList = c(),
+                            
+                            controlPeriodStart = -1080,
+                            controlPeriodEnd = -361,
+                            riskPeriodStart = 1,
+                            riskPeriodEnd = 30,
+                            censor = FALSE) {
+  exposureTable <- tolower(exposureTable)
+  outcomeTable <- tolower(outcomeTable)
+  if (exposureTable == "drug_era"){
+    exposureStartDate = "drug_era_start_date"
+    exposureEndDate = "drug_era_end_date"
+    exposureConceptId = "drug_concept_id"
+    exposurePersonId =  "person_id"
+  } else if (exposureTable == "drug_exposure"){
+    exposureStartDate = "drug_exposure_start_date"
+    exposureEndDate = "drug_exposure_end_date"
+    exposureConceptId = "drug_concept_id"
+    exposurePersonId =  "person_id"
+  } else {
+    exposureStartDate = "cohort_start_date"
+    exposureEndDate = "cohort_end_date"
+    exposureConceptId = "cohort_concept_id"
+    exposurePersonId =  "subject_id"
+  }
+  
+  if (outcomeTable == "condition_era"){
+    outcomeStartDate = "condition_era_start_date";
+    outcomeEndDate = "condition_era_end_date"
+    outcomeConceptId = "condition_concept_id"
+    outcomePersonId =  "person_id"
+  } else if (outcomeTable == "condition_occurrence"){
+    outcomeStartDate = "condition_start_date"
+    outcomeEndDate = "condition_end_date"
+    outcomeConceptId = "condition_concept_id"
+    outcomePersonId =  "person_id"
+  } else {
+    outcomeStartDate = "cohort_start_date"
+    outcomeEndDate = "cohort_end_date"
+    outcomeConceptId = "cohort_concept_id"
+    outcomePersonId =  "subject_id"
+  }
+  
+  cdmDatabase <- strsplit(cdmDatabaseSchema ,"\\.")[[1]][1]
+  resultsDatabase <- strsplit(resultsDatabaseSchema ,"\\.")[[1]][1]
+  
+  conceptsOfInterestTable <- paste(resultsDatabaseSchema,"concepts_of_interest",sep=".")
+  exposureOutcomeTable <- paste(resultsDatabaseSchema,"exposure_outcome",sep=".")
   
   #Check if connection already open:
-  writeLines("Check if connection already open:")
   if (is.null(connectionDetails$conn)){
     conn <- connect(connectionDetails)
   } else {
     conn <- connectionDetails$conn
   }
   
+  writeLines("Writing exposures and outcomes to database")
+  exposures <- data.frame(type = 1, id = unique(exposureOutcomePairs$exposureConceptId))
+  DatabaseConnector::dbInsertTable(conn, conceptsOfInterestTable, exposures, dropTableIfExists = TRUE)
+  
+  outcomes <- data.frame(type = 2, id = unique(exposureOutcomePairs$outcomeConceptId))
+  DatabaseConnector::dbInsertTable(conn, conceptsOfInterestTable, outcomes, dropTableIfExists = FALSE, createTable = FALSE)
+  
+  exposureOutcome <- data.frame(exposure_concept_id = exposureOutcomePairs$exposureConceptId, outcome_concept_id = exposureOutcomePairs$outcomeConceptId)
+  DatabaseConnector::dbInsertTable(conn, exposureOutcomeTable, exposureOutcome, dropTableIfExists = TRUE)
+  
   sql <- c()
-
-  # Store parameters
-  writeLines("Store all parameters")
-  renderedSql <- loadRenderTranslateSql(sqlFilename        = "StoreParameters.sql",
-                                        packageName        = "IcTemporalPatternDiscovery",
-                                        dbms               = connectionDetails$dbms,
-                                        
-                                        analysisId         = analysisId,
-                                        cdmSchema          = cdmSchema, 
-                                        resultsSchema      = resultsSchema, 
-                                        resultsTablePrefix = resultsTablePrefix,
-                                        sourceName         = sourceName, 
-                                        
-                                        resultsTablePrefix = resultsTablePrefix, 
-                                        createResultsTable = createResultsTable,
-                                        exposureTable = exposureTable,
-                                        outcomeTable = outcomeTable,
-                                        
-                                        drugTypeConceptIdList = drugTypeConceptIdList,
-                                        conditionTypeConceptIdList = conditionTypeConceptIdList,
-                                        
-                                        listExposureConceptId = paste(as.character(exposureOutcomePairs$exposureConceptId), collapse=", "),
-                                        listOutcomeConceptId = paste(as.character(exposureOutcomePairs$outcomeConceptId), collapse=", "),
-                                        
-                                        controlPeriodStart = controlPeriodStart,
-                                        controlPeriodEnd = controlPeriodEnd,
-                                        customObservationPeriodStart = customObservationPeriodStart,
-                                        customObservationPeriodEnd = customObservationPeriodEnd, 
-                                        multipleControlPeriods = multipleControlPeriods,
-                                        multipleObservationPeriods = multipleObservationPeriods,
-                                        shrinkage = shrinkage,
-                                        icPercentile = icPercentile,
-                                        metric = metric,
-                                        censor = censor
-                                        
-
-    )
-  #writeLines(paste(renderedSql, sep=""))
-  sql <- c(sql,renderedSql)
-  executeSql(conn,renderedSql)
-  
-  # Store all exposures
-  writeLines("Store all exposures")
-  for (exposureConceptId in unique(exposureOutcomePairs$exposureConceptId))
-  {
-    renderedSql <- loadRenderTranslateSql(sqlFilename        = "PopulateConceptsOfInterest.sql",
-                                          packageName        = "IcTemporalPatternDiscovery",
-                                          dbms               = connectionDetails$dbms,
-                                          resultsSchema      = resultsSchema, 
-                                          resultsTablePrefix = resultsTablePrefix, 
-                                          analysisId         = analysisId,
-                                          conceptType        = 1,
-                                          conceptId          = exposureConceptId
-    )
-    sql <- c(sql,renderedSql)
-    executeSql(conn,renderedSql)
-    
-  }
-  
-  # Store all outcomes
-  writeLines("Store all outcomes")
-  for (outcomeConceptId in unique(exposureOutcomePairs$outcomeConceptId))
-  {
-    renderedSql <- loadRenderTranslateSql(sqlFilename        = "PopulateConceptsOfInterest.sql",
-                                          packageName        = "IcTemporalPatternDiscovery",
-                                          dbms               = connectionDetails$dbms,
-                                          resultsSchema      = resultsSchema, 
-                                          resultsTablePrefix = resultsTablePrefix, 
-                                          analysisId         = analysisId,
-                                          conceptType        = 2,
-                                          conceptId          = outcomeConceptId
-    )
-    sql <- c(sql,renderedSql)
-    executeSql(conn,renderedSql)
-    
-  }
-  
-  # Store link between exposure and outcome
-  writeLines("Store link between exposure and outcome")
-  for (i in 1:nrow(exposureOutcomePairs)) # exposureOutcomePair in unique(exposureOutcomePairs))
-  {
-    exposureOutcomePair <- exposureOutcomePairs[i,]
-    
-    writeLines(paste("exposureConceptId: ", exposureOutcomePair$exposureConceptId, " outcomeConceptId: ", exposureOutcomePair$outcomeConceptId, sep=""))
-    
-    renderedSql <- loadRenderTranslateSql(sqlFilename        = "PopulateLinkExposureOutcome.sql",
-                                          packageName        = "IcTemporalPatternDiscovery",
-                                          dbms               = connectionDetails$dbms,
-                                          resultsSchema      = resultsSchema, 
-                                          resultsTablePrefix = resultsTablePrefix, 
-                                          analysisId         = analysisId,
-                                          exposureConceptId  = exposureOutcomePair$exposureConceptId,
-                                          outcomeConceptId   = exposureOutcomePair$outcomeConceptId
-                                          )
-    sql <- c(sql,renderedSql)
-    executeSql(conn,renderedSql)
-    
-  }
-  
-  writeLines("Generate temporary tables")
-  renderedSql <- loadRenderTranslateSql(sqlFilename = "IctpdParameterizedSQL.sql",
-                                        packageName = "IcTemporalPatternDiscovery",
-                                        dbms = connectionDetails$dbms,
-                                        cdmSchema = cdmSchema, 
-                                        resultsSchema = resultsSchema, 
-                                        resultsTablePrefix = resultsTablePrefix, 
-                                        createResultsTable = createResultsTable,
-                                        sourceName = sourceName,
-                                        analysisId = analysisId,
-                                                                    
-                                        drugTypeConceptIdList = drugTypeConceptIdList,
-                                        conditionTypeConceptIdList = conditionTypeConceptIdList,
-                                      
-                                        customObservationPeriodStart = customObservationPeriodStart,
-                                        customObservationPeriodEnd = customObservationPeriodEnd, 
-                                        controlPeriodStart = controlPeriodStart,
-                                        controlPeriodEnd = controlPeriodEnd,
-                                        multipleControlPeriods = multipleControlPeriods,
-                                        shrinkage = shrinkage,
-                                        icPercentile = icPercentile,
-                                        exposureTable = exposureTable,
-                                        outcomeTable = outcomeTable                                         
-                                        )
-    
-  writeLines(paste("Executing analysis (analysisId = ",analysisId,") This could take a while",sep=""))
-  #writeLines(paste(renderedSql, sep=""))
-  executeSql(conn,renderedSql)
-  sql <- c(sql,renderedSql)
-  
-  writeLines("Get results")
-  renderedSql <- loadRenderTranslateSql(sqlFilename = "GetStatisticsData.sql",
-                                        packageName = "IcTemporalPatternDiscovery",
-                                        dbms = connectionDetails$dbms,
-                                        cdmSchema = cdmSchema, 
-                                        resultsSchema = resultsSchema, 
-                                        resultsTablePrefix = resultsTablePrefix, 
-                                        createResultsTable = createResultsTable,
-                                        sourceName = sourceName,
-                                        analysisId = analysisId
-                                        
+  renderedSql <- SqlRender::loadRenderTranslateSql(sqlFilename = "IctpdParameterizedSQL.sql",
+                                                   packageName = "IcTemporalPatternDiscovery",
+                                                   dbms = connectionDetails$dbms,
+                                                   cdmDatabaseSchema = cdmDatabaseSchema, 
+                                                   resultsDatabaseSchema = resultsDatabaseSchema, 
+                                                   cdmDatabase = cdmDatabase,
+                                                   resultsDatabase = resultsDatabase,
+                                                   drugTypeConceptIdList = drugTypeConceptIdList,
+                                                   conditionTypeConceptIdList = conditionTypeConceptIdList,
+                                                   riskPeriodStart = riskPeriodStart,
+                                                   riskPeriodEnd = riskPeriodEnd, 
+                                                   controlPeriodStart = controlPeriodStart,
+                                                   controlPeriodEnd = controlPeriodEnd,
+                                                   exposureDatabaseSchema = exposureDatabaseSchema,
+                                                   exposureTable = exposureTable,
+                                                   exposureStartDate = exposureStartDate,
+                                                   exposureEndDate = exposureEndDate,
+                                                   exposureConceptId = exposureConceptId,
+                                                   exposurePersonId = exposurePersonId,
+                                                   outcomeDatabaseSchema = outcomeDatabaseSchema,
+                                                   outcomeTable = outcomeTable,                                        
+                                                   outcomeStartDate = outcomeStartDate,
+                                                   outcomeEndDate = outcomeEndDate,
+                                                   outcomeConceptId = outcomeConceptId,
+                                                   outcomePersonId = outcomePersonId,
+                                                   censor = censor
   )
   
-  writeLines(paste("Executing IC calculations (analysisId = ",analysisId,")",sep=""))
-  #writeLines(paste(renderedSql, sep=""))
-  queryResults <- querySql(conn,renderedSql)
-  sql <- c(sql,renderedSql)
+  writeLines(paste("Computing counts. This could take a while",sep=""))
+  executeSql(conn, renderedSql)
+  sql <- c(sql, renderedSql)
   
-  writeLines("Calculate statistics")
-  comb <- CalcStatisticsIC(connectionDetails = connectionDetails, 
-                   cdmSchema = cdmSchema, 
-                   resultsSchema = resultsSchema, 
-                   sourceName = sourceName,
-                   resultsTablePrefix = resultsTablePrefix, 
-                   createResultsTable = createResultsTable, 
-                   analysisId = analysisId,
-                   comb = queryResults, 
-                   multipleControlPeriods = multipleControlPeriods, 
-                   multipleObservationPeriods = multipleObservationPeriods, 
-                   shrinkage = shrinkage, 
-                   icPercentile = icPercentile
-                   )
+  renderedSql <- SqlRender::loadRenderTranslateSql(sqlFilename = "GetStatisticsData.sql",
+                                                   packageName = "IcTemporalPatternDiscovery",
+                                                   dbms = connectionDetails$dbms,
+                                                   exposureConceptId = exposureConceptId,
+                                                   exposurePersonId = exposurePersonId,
+                                                   outcomeStartDate = outcomeStartDate,
+                                                   outcomeEndDate = outcomeEndDate)
+  writeLines("Retrieving counts from server")
+  counts <- querySql(conn, renderedSql)
+  sql <- c(sql, renderedSql)
   
-  # -------------------------------
-  # --    Store results in table --
-  # -------------------------------
-  #print(comb, quote = TRUE, row.names = FALSE)
-  if(createResultsTable == TRUE)
-  {
-    renderedSql <- loadRenderTranslateSql(sqlFilename = "CreateResultsTable.sql",
-                                          packageName = "IcTemporalPatternDiscovery",
-                                          dbms = connectionDetails$dbms,
-                                          resultsSchema = resultsSchema, 
-                                          resultsTablePrefix = resultsTablePrefix, 
-                                          sourceName = sourceName
-    )
-    
-    writeLines(paste("Create results table", sep=""))
-    #writeLines(paste(renderedSql, sep=""))
-    #print(connectionDetails)
-    executeSql(conn,renderedSql)
-    sql <- c(sql,renderedSql)            
-    
-    for(cc in 1:length(comb[['CXY_CONTROL']]))
-    {
-      combItem <- comb[cc,]
-      #print(combItem)
-      renderedSql <- loadRenderTranslateSql(sqlFilename = "StoreResults.sql",
-                                            packageName = "IcTemporalPatternDiscovery",
-                                            dbms = connectionDetails$dbms,
-                                            resultsSchema = resultsSchema, 
-                                            resultsTablePrefix = resultsTablePrefix, 
-                                            sourceName = sourceName,
-                                            analysisId = analysisId,
-                                            exposureOfInterest = combItem[['EXPOSUREOFINTEREST']],   
-                                            outcomeOfInterest  = combItem[['OUTCOMEOFINTEREST']],   
-                                            combinationCount                  = combItem[['CXY']],
-                                            exposureCount                   = combItem[['CX']],
-                                            outcomeCount                   = combItem[['CY']],
-                                            totalCount                    = combItem[['C']],
-                                            expected             = combItem[['expected']],
-                                            ic                   = combItem[['IC']],
-                                            lowIc                = combItem[['IC_low']],
-                                            highIc               = combItem[['IC_high']]
-      )
-      
-      writeLines(paste("Write results to table",sep=""))
-      #writeLines(paste(renderedSql, sep=""))
-      executeSql(conn,renderedSql)
-      sql <- c(sql,renderedSql)            
-    }
-  } else
-  {
-    # TODO: Not yet implemented
-    #writeIctpdAnalysesDetailsToFile(createIctpdAnalysisDetails(analysisId = analysisId),analysesDetails)
-  }
+  #Drop tables used in computation:
+  renderedSql <- SqlRender::loadRenderTranslateSql(sqlFilename = "DropTables.sql",
+                                                   packageName = "IcTemporalPatternDiscovery",
+                                                   dbms = connectionDetails$dbms)
+  executeSql(conn, renderedSql, progressBar = FALSE, reportOverallTime = FALSE)
+  sql <- c(sql, renderedSql)                                                 
   
-  writeLines("Statistics finished")
-  dbDisconnect(conn)
+  # Close connection if it was openend in this function:
+  if (is.null(connectionDetails$conn)){
+    RJDBC::dbDisconnect(conn)
+  } 
+  
+  metaData <- list(sql = sql,
+                   exposureOutcomePairs = exposureOutcomePairs,
+                   call = match.call()
+  )
+  result <- list(counts = counts,
+                 metaData = metaData
+  )
+  class(result) <- "ictpdData"
+  return(result)
 }
-
-
 
 ic <- function(obs,exp,shape.add=0.5,rate.add=0.5, percentile=0.025) {
   ic    <- log2(                     (obs+shape.add)/     (exp+rate.add) )
@@ -365,239 +318,255 @@ ic <- function(obs,exp,shape.add=0.5,rate.add=0.5, percentile=0.025) {
   return(list(ic=ic,ic_low=ic_low,ic_high=ic_high))
 }
 
-
-
-CalcStatisticsIC <- function (connectionDetails, 
-                              cdmSchema, 
-                              resultsSchema, 
-                              sourceName,
-                              resultsTablePrefix,
-                              createResultsTable,
-                              analysisId, 
-                              comb, 
-                              multipleControlPeriods, 
-                              multipleObservationPeriods, 
-                              shrinkage, 
-                              icPercentile
-                              )
-{
-  for(controlPeriod in 1:length(multipleControlPeriods[[1]]))
-  {
-    expectedControl = c();
+#' @title compute the IC statistics
+#' 
+#' @param ictpdData An object containing the counts, as created using the \code{\link{getDbIctpdData}} function.
+#' 
+#' @template IcCalculationParameters
+#' 
+#' @return An object of type \code{ictpdResults} containing the results.
+#' 
+#' @template Example
+#' 
+#' @export
+calculateStatisticsIC <- function (ictpdData, 
+                                   multipleControlPeriods = '110',
+                                   multipleRiskPeriods = '10000',
+                                   shrinkage = 0.5, 
+                                   icPercentile = 0.025,
+                                   metric = "IC025"
+) {
+  if (toupper(metric) == "IC025" & icPercentile != 0.025){
+    icPercentile = 0.025
+    warning("Forcing icPercentile to 0.025 to be able to compute IC025")
+  }
+  
+  comb <- ictpdData$counts
+  
+  expectedControl = c();
+  
+  controlPeriodItem=strsplit(toString(multipleControlPeriods[[1]][controlPeriod]),'');
+  
+  tmpMat <- matrix(rep(NA, length(comb[['CXY_CONTROL']])), ncol=1);
+  
+  if(controlPeriodItem[[1]][1] == 1) {
+    tmpMat <- cbind(tmpMat, comb[['CXY_CONTROL']] / (comb[['CX_CONTROL']] * (comb[['CY_CONTROL']]  / comb[['C_CONTROL']])));
+  }
+  if(controlPeriodItem[[1]][2] == 1) {
+    tmpMat <- cbind(tmpMat, comb[['CXY_1M']] / (comb[['CX_1M']] * (comb[['CY_1M']]  / comb[['C_1M']])));
+  }
+  if(controlPeriodItem[[1]][3] == 1) {
+    tmpMat <- cbind(tmpMat, comb[['CXY_0M']] / (comb[['CX_0M']] * (comb[['CY_0M']]  / comb[['C_0M']])));
+  }
+  if(ncol(tmpMat) == 1) {
+    tmpMat <- matrix(rep(1, length(comb[['CXY_CONTROL']])), ncol=1);
+  }
+  tmpMat[tmpMat == -Inf] <- NA;
+  tmpMat[tmpMat == Inf] <- NA;
+  tmpMat[tmpMat == NaN] <- NA;
+  
+  expectedControl <- apply(tmpMat, 1, function(x) max(x[!is.na(x)]));
+  
+  # Max of a row with only NA equals -Inf, therefore changed back to NA
+  expectedControl[expectedControl == -Inf] <- NA;
+  
+  # ----------------------------------
+  # --  Calculate IC for all        --
+  # --  observation windows and     --
+  # --  select the largest IC025    --
+  # ----------------------------------
+  obsPeriodItem=strsplit(toString(multipleRiskPeriods[[1]][obsPeriod]),'');
+  
+  tmpMat <- matrix(rep(-99999999, length(comb[['CXY_CONTROL']])), ncol=1);
+  
+  comb['IC'] <- c();
+  comb['IC_low'] <- c();
+  comb['IC_high'] <- c();
+  comb['CXY'] <- c();
+  comb['CX'] <- c();
+  comb['CY'] <- c();
+  comb['C'] <- c();
+  comb['expected'] <- c()
+  
+  for(cc in 1:length(comb[['CXY_CONTROL']])) {
+    maxIC_low <- -999999999;
+    maxIC <- NA;
+    maxIC_high <- NA;
+    CXY <- NA;
+    CX <- NA;
+    CY <- NA;
+    C <- NA;
+    expected <- NA;
     
-    controlPeriodItem=strsplit(toString(multipleControlPeriods[[1]][controlPeriod]),'');
-    
-    tmpMat <- matrix(rep(NA, length(comb[['CXY_CONTROL']])), ncol=1);
-    
-    if(controlPeriodItem[[1]][1] == 1)
-    {
-      tmpMat <- cbind(tmpMat, comb[['CXY_CONTROL']] / (comb[['CX_CONTROL']] * (comb[['CY_CONTROL']]  / comb[['C_CONTROL']])));
-    }
-    if(controlPeriodItem[[1]][2] == 1)
-    {
-      tmpMat <- cbind(tmpMat, comb[['CXY_1M']] / (comb[['CX_1M']] * (comb[['CY_1M']]  / comb[['C_1M']])));
-    }
-    if(controlPeriodItem[[1]][3] == 1)
-    {
-      tmpMat <- cbind(tmpMat, comb[['CXY_0M']] / (comb[['CX_0M']] * (comb[['CY_0M']]  / comb[['C_0M']])));
-    }
-    if(ncol(tmpMat) == 1)
-    {
-      tmpMat <- matrix(rep(1, length(comb[['CXY_CONTROL']])), ncol=1);
-    }
-    tmpMat[tmpMat == -Inf] <- NA;
-    tmpMat[tmpMat == Inf] <- NA;
-    tmpMat[tmpMat == NaN] <- NA;
-    
-    expectedControl <- apply(tmpMat, 1, function(x) max(x[!is.na(x)]));
-    
-    # Max of a row with only NA equals -Inf, therefore changed back to NA
-    expectedControl[expectedControl == -Inf] <- NA;
-    
-    # ----------------------------------
-    # --  Calculate IC for all        --
-    # --  observation windows and     --
-    # --  select the largest IC025    --
-    # ----------------------------------
-    for(obsPeriod in 1:length(multipleObservationPeriods[[1]]))
-    {
-      obsPeriodItem=strsplit(toString(multipleObservationPeriods[[1]][obsPeriod]),'');
+    if(obsPeriodItem[[1]][1] == 1) {
+      tmpIC <- ic(  comb[['CXY_OBSERVED_1_30']][cc]                                                               # Observed
+                    ,(comb[['CX_OBSERVED_1_30']][cc] * (comb[['CY_OBSERVED_1_30']][cc] / comb[['C_OBSERVED_1_30']][cc]))     # Expected_observed
+                    * expectedControl[cc]                                                                       	# Expected_control
+                    , as.numeric(shrinkage)
+                    , as.numeric(shrinkage)		                 									# Shrinkage factors
+                    , as.numeric(icPercentile));
       
-      tmpMat <- matrix(rep(-99999999, length(comb[['CXY_CONTROL']])), ncol=1);
-      
-      comb['IC'] <- c();
-      comb['IC_low'] <- c();
-      comb['IC_high'] <- c();
-      comb['CXY'] <- c();
-      comb['CX'] <- c();
-      comb['CY'] <- c();
-      comb['C'] <- c();
-      comb['expected'] <- c()
-      
-      for(cc in 1:length(comb[['CXY_CONTROL']]))
-      {
-        maxIC_low <- -999999999;
-        maxIC <- NA;
-        maxIC_high <- NA;
-        CXY <- NA;
-        CX <- NA;
-        CY <- NA;
-        C <- NA;
-        expected <- NA;
-        
-        if(obsPeriodItem[[1]][1] == 1)
-        {
-          tmpIC <- ic(  comb[['CXY_OBSERVED_1_30']][cc]                                                               # Observed
-                        ,(comb[['CX_OBSERVED_1_30']][cc] * (comb[['CY_OBSERVED_1_30']][cc] / comb[['C_OBSERVED_1_30']][cc]))     # Expected_observed
-                        * expectedControl[cc]                                                                       	# Expected_control
-                        , as.numeric(shrinkage)
-                        , as.numeric(shrinkage)		                 									# Shrinkage factors
-                        , as.numeric(icPercentile));
-          
-          if( ! is.na(tmpIC$ic_low))
-          {
-            if(maxIC_low < tmpIC$ic_low)
-            {
-              maxIC      <- tmpIC$ic;
-              maxIC_low  <- tmpIC$ic_low;
-              maxIC_high <- tmpIC$ic_high;
-              CXY        <- comb[['CXY_OBSERVED_1_30']][cc];
-              CX         <- comb[['CX_OBSERVED_1_30']][cc];
-              CY         <- comb[['CY_OBSERVED_1_30']][cc];
-              C          <- comb[['C_OBSERVED_1_30']][cc];
-              expected   <- (comb[['CX_OBSERVED_1_30']][cc] * (comb[['CY_OBSERVED_1_30']][cc] / comb[['C_OBSERVED_1_30']][cc])) * expectedControl[cc];
-            }
-          }
-        }
-        
-        if(obsPeriodItem[[1]][2] == 1)
-        {
-          tmpIC <- ic(  comb[['CXY_OBSERVED_1_360']][cc]                                                               # Observed
-                        ,(comb[['CX_OBSERVED_1_360']][cc] * (comb[['CY_OBSERVED_1_360']][cc] / comb[['C_OBSERVED_1_360']][cc]))   	# Expected_observed
-                        * expectedControl[cc]                                                                        	# Expected_control
-                        , as.numeric(shrinkage)
-                        , as.numeric(shrinkage)  	                 									# Shrinkage factors
-                        , as.numeric(icPercentile));
-          if( ! is.na(tmpIC$ic_low))
-          {
-            if(maxIC_low < tmpIC$ic_low)
-            {
-              maxIC      <- tmpIC$ic;
-              maxIC_low  <- tmpIC$ic_low;
-              maxIC_high <- tmpIC$ic_high;
-              CXY        <- comb[['CXY_OBSERVED_1_360']][cc];
-              CX         <- comb[['CX_OBSERVED_1_360']][cc];
-              CY         <- comb[['CY_OBSERVED_1_360']][cc];
-              C          <- comb[['C_OBSERVED_1_360']][cc];
-              expected   <- (comb[['CX_OBSERVED_1_360']][cc] * (comb[['CY_OBSERVED_1_360']][cc] / comb[['C_OBSERVED_1_360']][cc])) * expectedControl[cc];
-            }
-          }
-        }
-        if(obsPeriodItem[[1]][3] == 1)
-        {
-          tmpIC <- ic(  comb[['CXY_OBSERVED_31_90']][cc]                                                               # Observed
-                        ,(comb[['CX_OBSERVED_31_90']][cc] * (comb[['CY_OBSERVED_31_90']][cc] / comb[['C_OBSERVED_31_90']][cc]))   	# Expected_observed
-                        * expectedControl[cc]                                                                        	# Expected_control
-                        , as.numeric(shrinkage)
-                        , as.numeric(shrinkage)  	                 									# Shrinkage factors
-                        , as.numeric(icPercentile));
-          if( ! is.na(tmpIC$ic_low))
-          {
-            if(maxIC_low < tmpIC$ic_low)
-            {
-              maxIC      <- tmpIC$ic;
-              maxIC_low  <- tmpIC$ic_low;
-              maxIC_high <- tmpIC$ic_high;
-              CXY        <- comb[['CXY_OBSERVED_31_90']][cc];
-              CX         <- comb[['CX_OBSERVED_31_90']][cc];
-              CY         <- comb[['CY_OBSERVED_31_90']][cc];
-              C          <- comb[['C_OBSERVED_31_90']][cc];
-              expected   <- (comb[['CX_OBSERVED_31_90']][cc] * (comb[['CY_OBSERVED_31_90']][cc] / comb[['C_OBSERVED_31_90']][cc])) * expectedControl[cc];
-            }
-          }
-        }
-        if(obsPeriodItem[[1]][4] == 1)
-        {
-          tmpIC <- ic(  comb[['CXY_OBSERVED_91_180']][cc]                                                               # Observed
-                        ,(comb[['CX_OBSERVED_91_180']][cc] * (comb[['CY_OBSERVED_91_180']][cc] / comb[['C_OBSERVED_91_180']][cc]))   	# Expected_observed
-                        * expectedControl[cc]                                                                        	# Expected_control
-                        , as.numeric(shrinkage)
-                        , as.numeric(shrinkage)  	                 									# Shrinkage factors
-                        , as.numeric(icPercentile));
-          if( ! is.na(tmpIC$ic_low))
-          {
-            if(maxIC_low < tmpIC$ic_low)
-            {
-              maxIC      <- tmpIC$ic;
-              maxIC_low  <- tmpIC$ic_low;
-              maxIC_high <- tmpIC$ic_high;
-              CXY        <- comb[['CXY_OBSERVED_91_180']][cc];
-              CX         <- comb[['CX_OBSERVED_91_180']][cc];
-              CY         <- comb[['CY_OBSERVED_91_180']][cc];
-              C          <- comb[['C_OBSERVED_91_180']][cc];
-              expected   <- (comb[['CX_OBSERVED_91_180']][cc] * (comb[['CY_OBSERVED_91_180']][cc] / comb[['C_OBSERVED_91_180']][cc])) * expectedControl[cc];
-            }
-          }
-        }
-        if(obsPeriodItem[[1]][5] == 1)
-        {
-          tmpIC <- ic(  comb[['CXY_OBSERVED_721_1080']][cc]                                                               # Observed
-                        ,(comb[['CX_OBSERVED_721_1080']][cc] * (comb[['CY_OBSERVED_721_1080']][cc] / comb[['C_OBSERVED_721_1080']][cc]))   	# Expected_observed
-                        * expectedControl[cc]                                                                        	# Expected_control
-                        , as.numeric(shrinkage)
-                        , as.numeric(shrinkage)  	                 									# Shrinkage factors
-                        , as.numeric(icPercentile));
-          if( ! is.na(tmpIC$ic_low))
-          {
-            if(maxIC_low < tmpIC$ic_low)
-            {
-              maxIC      <- tmpIC$ic;
-              maxIC_low  <- tmpIC$ic_low;
-              maxIC_high <- tmpIC$ic_high;
-              CXY        <- comb[['CXY_OBSERVED_721_1080']][cc];
-              CX         <- comb[['CX_OBSERVED_721_1080']][cc];
-              CY         <- comb[['CY_OBSERVED_721_1080']][cc];
-              C          <- comb[['C_OBSERVED_721_1080']][cc];
-              expected   <- (comb[['CX_OBSERVED_721_1080']][cc] * (comb[['CY_OBSERVED_721_1080']][cc] / comb[['C_OBSERVED_721_1080']][cc])) * expectedControl[cc];
-            }
-          }
-        }
-        
-        # -----------------------------
-        # --    Store max values     --
-        # -----------------------------
-        if(is.na(maxIC))
-        {
-          comb[['IC']][cc] <- NA;
-          comb[['IC_low']][cc] <- NA;
-          comb[['IC_high']][cc] <- NA;
-          comb[['CXY']][cc] <- NA;
-          comb[['CX']][cc]  <- NA;
-          comb[['CY']][cc]  <- NA;
-          comb[['C']][cc]   <- NA;
-          comb[['expected']][cc]   <- NA;
-        } else
-        {
-          comb[['IC']][cc] <- maxIC;
-          comb[['IC_low']][cc] <- maxIC_low;
-          comb[['IC_high']][cc] <- maxIC_high;
-          comb[['CXY']][cc] <- CXY;
-          comb[['CX']][cc]  <- CX;
-          comb[['CY']][cc]  <- CY;
-          comb[['C']][cc]   <- C;
-          comb[['expected']][cc]   <- expected;
+      if( ! is.na(tmpIC$ic_low)) {
+        if(maxIC_low < tmpIC$ic_low) {
+          maxIC      <- tmpIC$ic;
+          maxIC_low  <- tmpIC$ic_low;
+          maxIC_high <- tmpIC$ic_high;
+          CXY        <- comb[['CXY_OBSERVED_1_30']][cc];
+          CX         <- comb[['CX_OBSERVED_1_30']][cc];
+          CY         <- comb[['CY_OBSERVED_1_30']][cc];
+          C          <- comb[['C_OBSERVED_1_30']][cc];
+          expected   <- (comb[['CX_OBSERVED_1_30']][cc] * (comb[['CY_OBSERVED_1_30']][cc] / comb[['C_OBSERVED_1_30']][cc])) * expectedControl[cc];
         }
       }
-      return(comb)
-      
     }
-
+    
+    if(obsPeriodItem[[1]][2] == 1) {
+      tmpIC <- ic(  comb[['CXY_OBSERVED_1_360']][cc]                                                               # Observed
+                    ,(comb[['CX_OBSERVED_1_360']][cc] * (comb[['CY_OBSERVED_1_360']][cc] / comb[['C_OBSERVED_1_360']][cc]))   	# Expected_observed
+                    * expectedControl[cc]                                                                        	# Expected_control
+                    , as.numeric(shrinkage)
+                    , as.numeric(shrinkage)  	                 									# Shrinkage factors
+                    , as.numeric(icPercentile));
+      if( ! is.na(tmpIC$ic_low)) {
+        if(maxIC_low < tmpIC$ic_low) {
+          maxIC      <- tmpIC$ic;
+          maxIC_low  <- tmpIC$ic_low;
+          maxIC_high <- tmpIC$ic_high;
+          CXY        <- comb[['CXY_OBSERVED_1_360']][cc];
+          CX         <- comb[['CX_OBSERVED_1_360']][cc];
+          CY         <- comb[['CY_OBSERVED_1_360']][cc];
+          C          <- comb[['C_OBSERVED_1_360']][cc];
+          expected   <- (comb[['CX_OBSERVED_1_360']][cc] * (comb[['CY_OBSERVED_1_360']][cc] / comb[['C_OBSERVED_1_360']][cc])) * expectedControl[cc];
+        }
+      }
+    }
+    if(obsPeriodItem[[1]][3] == 1) {
+      tmpIC <- ic(  comb[['CXY_OBSERVED_31_90']][cc]                                                               # Observed
+                    ,(comb[['CX_OBSERVED_31_90']][cc] * (comb[['CY_OBSERVED_31_90']][cc] / comb[['C_OBSERVED_31_90']][cc]))   	# Expected_observed
+                    * expectedControl[cc]                                                                        	# Expected_control
+                    , as.numeric(shrinkage)
+                    , as.numeric(shrinkage)  	                 									# Shrinkage factors
+                    , as.numeric(icPercentile));
+      if( ! is.na(tmpIC$ic_low)) {
+        if(maxIC_low < tmpIC$ic_low) {
+          maxIC      <- tmpIC$ic;
+          maxIC_low  <- tmpIC$ic_low;
+          maxIC_high <- tmpIC$ic_high;
+          CXY        <- comb[['CXY_OBSERVED_31_90']][cc];
+          CX         <- comb[['CX_OBSERVED_31_90']][cc];
+          CY         <- comb[['CY_OBSERVED_31_90']][cc];
+          C          <- comb[['C_OBSERVED_31_90']][cc];
+          expected   <- (comb[['CX_OBSERVED_31_90']][cc] * (comb[['CY_OBSERVED_31_90']][cc] / comb[['C_OBSERVED_31_90']][cc])) * expectedControl[cc];
+        }
+      }
+    }
+    if(obsPeriodItem[[1]][4] == 1) {
+      tmpIC <- ic(  comb[['CXY_OBSERVED_91_180']][cc]                                                               # Observed
+                    ,(comb[['CX_OBSERVED_91_180']][cc] * (comb[['CY_OBSERVED_91_180']][cc] / comb[['C_OBSERVED_91_180']][cc]))   	# Expected_observed
+                    * expectedControl[cc]                                                                        	# Expected_control
+                    , as.numeric(shrinkage)
+                    , as.numeric(shrinkage)  	                 									# Shrinkage factors
+                    , as.numeric(icPercentile));
+      if( ! is.na(tmpIC$ic_low)) {
+        if(maxIC_low < tmpIC$ic_low) {
+          maxIC      <- tmpIC$ic;
+          maxIC_low  <- tmpIC$ic_low;
+          maxIC_high <- tmpIC$ic_high;
+          CXY        <- comb[['CXY_OBSERVED_91_180']][cc];
+          CX         <- comb[['CX_OBSERVED_91_180']][cc];
+          CY         <- comb[['CY_OBSERVED_91_180']][cc];
+          C          <- comb[['C_OBSERVED_91_180']][cc];
+          expected   <- (comb[['CX_OBSERVED_91_180']][cc] * (comb[['CY_OBSERVED_91_180']][cc] / comb[['C_OBSERVED_91_180']][cc])) * expectedControl[cc];
+        }
+      }
+    }
+    if(obsPeriodItem[[1]][5] == 1) {
+      tmpIC <- ic(  comb[['CXY_OBSERVED_721_1080']][cc]                                                               # Observed
+                    ,(comb[['CX_OBSERVED_721_1080']][cc] * (comb[['CY_OBSERVED_721_1080']][cc] / comb[['C_OBSERVED_721_1080']][cc]))   	# Expected_observed
+                    * expectedControl[cc]                                                                        	# Expected_control
+                    , as.numeric(shrinkage)
+                    , as.numeric(shrinkage)  	                 									# Shrinkage factors
+                    , as.numeric(icPercentile));
+      if( ! is.na(tmpIC$ic_low)) {
+        if(maxIC_low < tmpIC$ic_low) {
+          maxIC      <- tmpIC$ic;
+          maxIC_low  <- tmpIC$ic_low;
+          maxIC_high <- tmpIC$ic_high;
+          CXY        <- comb[['CXY_OBSERVED_721_1080']][cc];
+          CX         <- comb[['CX_OBSERVED_721_1080']][cc];
+          CY         <- comb[['CY_OBSERVED_721_1080']][cc];
+          C          <- comb[['C_OBSERVED_721_1080']][cc];
+          expected   <- (comb[['CX_OBSERVED_721_1080']][cc] * (comb[['CY_OBSERVED_721_1080']][cc] / comb[['C_OBSERVED_721_1080']][cc])) * expectedControl[cc];
+        }
+      }
+    }
+    
+    # -----------------------------
+    # --    Store max values     --
+    # -----------------------------
+    if(is.na(maxIC)) {
+      comb[['IC']][cc] <- NA;
+      comb[['IC_low']][cc] <- NA;
+      comb[['IC_high']][cc] <- NA;
+      comb[['CXY']][cc] <- NA;
+      comb[['CX']][cc]  <- NA;
+      comb[['CY']][cc]  <- NA;
+      comb[['C']][cc]   <- NA;
+      comb[['expected']][cc]   <- NA;
+    } else {
+      comb[['IC']][cc] <- maxIC;
+      comb[['IC_low']][cc] <- maxIC_low;
+      comb[['IC_high']][cc] <- maxIC_high;
+      comb[['CXY']][cc] <- CXY;
+      comb[['CX']][cc]  <- CX;
+      comb[['CY']][cc]  <- CY;
+      comb[['C']][cc]   <- C;
+      comb[['expected']][cc]   <- expected;
+    }
   }
+  # Add some standard metrics that are computed by all OHDSI methods (not very meaningful for ICTPD):
+  comb$logRr <- comb$IC
+  comb$seLogRr <- (comb$IC_high - comb$IC) / qnorm(1-icPercentile)
+  
+  if (toupper(metric) == "IC"){
+    comb$estimate <- comb$IC
+  } else {
+    comb$estimate <- comb$IC_low
+  }
+  ictpdData$metaData$call <- list(ictpdData$metaData$call, match.call())
+  result <- list(results = comb,
+                 metaData = ictpdData$metaData,
+                 metric = metric)  
+  class(result) <- "ictpdResults"
+  return(result) 
 }
 
+#' @export
+print.ictpdResults <- function(x, ...){
+  output <- subset(x$results, select = c(EXPOSUREOFINTEREST,OUTCOMEOFINTEREST,estimate))  
+  colnames(output) <- c("Exposure concept ID","Outcome concept ID", x$metric)
+  printCoefmat(output)
+}
 
+#' @export
+summary.ictpdResults <- function(object, ...){
+  object$results
+}
 
-
+#' @export
+runIctpdAnalyses <- function(connectionDetails, 
+                             cdmDatabaseSchema, 
+                             resultsDatabaseSchema, 
+                             exposureOutcomePairs,
+                             exposureDatabaseSchema = cdmDatabaseSchema,
+                             exposureTable = "drug_era",
+                             outcomeDatabaseSchema = cdmDatabaseSchema,
+                             outcomeTable = "condition_era",
+                             drugTypeConceptIdList = c(),
+                             conditionTypeConceptIdList = c(),
+                             ictpdAnalysisList){
+ #Todo: Need to implement this function so it efficiently runs over all analyses
+}
 
 #' @title writeIctpdAnalysesDetailsToFile
 #'

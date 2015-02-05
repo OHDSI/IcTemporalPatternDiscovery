@@ -7,12 +7,8 @@ Extract results from temporary table to calculate IC values
 Tomas Bergvall
 ******************/
 
-{DEFAULT @analysisId = 1}
 {DEFAULT @exposureConceptId = "drug_concept_id"}
 {DEFAULT @outcomeConceptId = "condition_concept_id"}
-{DEFAULT @cdmSchema = ""}
-
-USE @cdmSchema
 
 SELECT
       TXY.@exposureConceptId as exposureOfInterest,
@@ -50,9 +46,8 @@ SELECT
       cy_observed_721_1080,
       c_observed_721_1080
 FROM BASE_LINE_COUNTER_CXY TXY
-JOIN BASE_LINE_COUNTER_CX   TX ON TXY.AnalysisId = TX.AnalysisId AND TXY.@exposureConceptId = TX.@exposureConceptId  
-JOIN BASE_LINE_COUNTER_CY   TY ON TXY.AnalysisId = TY.AnalysisId AND TXY.@outcomeConceptId  = TY.@outcomeConceptId  
-JOIN BASE_LINE_COUNTER_C     T ON TXY.AnalysisId = T.AnalysisId
-WHERE TXY.AnalysisId = @analysisId
+JOIN BASE_LINE_COUNTER_CX   TX ON TXY.@exposureConceptId = TX.@exposureConceptId  
+JOIN BASE_LINE_COUNTER_CY   TY ON  TXY.@outcomeConceptId  = TY.@outcomeConceptId  
+CROSS JOIN BASE_LINE_COUNTER_C     T
 ORDER BY TXY.@exposureConceptId,TXY.@outcomeConceptId
 
