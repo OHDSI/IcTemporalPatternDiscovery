@@ -19,7 +19,6 @@
 # @author Uppsala Monitoring Centre
 # @author Tomas Bergvall
 
-
 #' @title IC temporal pattern discovery
 #'
 #' @description
@@ -27,6 +26,7 @@
 #'
 #' @details
 #' Population-level estimation method that estimates risk by combining a self-controlled and cohort design.
+#' This function will call both the \code{\link{getDbIctpdData}} and \code{\link{calculateStatisticsIc}} functions.
 #'  
 #' @references
 #' Noren GN, Bate A, Hopstadius J, Star K, Edwards IR.  Temporal Pattern Discovery for Trends and Transient Effect: Its Application to Patient Reocrds. by combining a self-controlled design with a cohort design
@@ -34,11 +34,13 @@
 #'  
 #' @template StudyParameters 
 #' 
-#' @param analysisId  A unique identifier that can later be used to identify the results of this analysis.
+#' 
 #' @param storeResultsInDatabase Should the results be stored in the database?
 #' @param createOutputTables  Should the output tables be created? If not, they are assumed to exist and data will be appended.
 #' If the value is true and the tables exist they will be overwritten.
 #' @param outputTablePrefix   Prefix used for the result tables in the \code{resultsDatabaseSchema}. 
+
+#' @param analysisId  A unique identifier that can later be used to identify the results of this analysis.
 #' 
 #' @template GetDataParameters
 #' 
@@ -60,13 +62,13 @@ runIctpd <- function (connectionDetails,
                       exposureTable = "drug_era",
                       outcomeDatabaseSchema = cdmDatabaseSchema,
                       outcomeTable = "condition_era",
-                      drugTypeConceptIdList = c(),
-                      conditionTypeConceptIdList = c(),
-                      
-                      analysisId = 1,
+                      drugTypeConceptIdList = c(38000182),
+                      conditionTypeConceptIdList = c(38000247),
                       storeResultsInDatabase = FALSE,
                       createOutputTables = TRUE,
                       outputTablePrefix = "ictpd",
+                      
+                      analysisId = 1,
                       
                       controlPeriodStart = -1080,
                       controlPeriodEnd = -361,
@@ -79,81 +81,31 @@ runIctpd <- function (connectionDetails,
                       shrinkage = 0.5, 
                       icPercentile = 0.025,
                       metric = "IC025"){
-  cdmDatabase <- strsplit(cdmDatabaseSchema ,"\\.")[[1]][1]
-  resultsDatabase <- strsplit(resultsDatabaseSchema ,"\\.")[[1]][1]
-  
-  conn <- connect(connectionDetails)
-  connectionDetails$conn <- conn # Store it so we don't have to open it again
-  
-  sql <- c()
-  
-  if (storeResultsInDatabase){
-    writeLines("Storing parameters")
-    renderedSql <- loadRenderTranslateSql(sqlFilename = "StoreParameters.sql",
-                                          packageName = "IcTemporalPatternDiscovery",
-                                          dbms = connectionDetails$dbms,
-                                          resultsDatabase = resultsDatabase,
-                                          createOutputTables = createOutputTables,
-                                          outputTablePrefix = outputTablePrefix,
-                                          analysisId  = analysisId,
-                                          controlPeriodStart = controlPeriodStart,
-                                          controlPeriodEnd = controlPeriodEnd,
-                                          riskPeriodStart = riskPeriodStart,
-                                          riskPeriodEnd = riskPeriodEnd,
-                                          censor = censor,
-                                          multipleControlPeriods = multipleControlPeriods,
-                                          multipleRiskPeriods = multipleRiskPeriods,
-                                          shrinkage = shrinkage, 
-                                          icPercentile = icPercentile,
-                                          metric = metric)
-    sql <- c(sql,renderedSql)
-    executeSql(conn,renderedSql, progressBar = FALSE, reportOverallTime = FALSE)
-  }
-  
-  ictpdData <- getDbIctpdData(connectionDetails = connectionDetails, 
-                              cdmDatabaseSchema = cdmDatabaseSchema, 
-                              resultsDatabaseSchema = resultsDatabaseSchema, 
-                              exposureOutcomePairs = exposureOutcomePairs,
-                              exposureDatabaseSchema = exposureDatabaseSchema,
-                              exposureTable = exposureTable,
-                              outcomeDatabaseSchema = outcomeDatabaseSchema,
-                              outcomeTable = outcomeTable,
-                              drugTypeConceptIdList = drugTypeConceptIdList,
-                              conditionTypeConceptIdList = conditionTypeConceptIdList,
-                              
-                              controlPeriodStart = controlPeriodStart,
-                              controlPeriodEnd = controlPeriodEnd,
-                              riskPeriodStart = riskPeriodStart,
-                              riskPeriodEnd = riskPeriodEnd,
-                              censor = censor)  
-  
-  ictpdResults <- calculateStatisticsIC(ictpdData = ictpdData, 
-                                        multipleControlPeriods = multipleControlPeriods,
-                                        multipleRiskPeriods = multipleRiskPeriods,
-                                        shrinkage = shrinkage, 
-                                        icPercentile = icPercentile,
-                                        metric = metric)
-  
-  sql <- c(sql,ictpdResults$metaData$sql) 
-  
-  if (storeResultsInDatabase){
-    tableName <- paste(resultsDatabaseSchema,".",outputTablePrefix,"_results",sep="")
-    resultsTable <- ictpdResults$results
-    resultsTable$analysisId <- analysisId
-    if (!createOutputTables){
-      delSql <- "DELETE * FROM @resultsTable WHERE analysisId = @analysisId"
-      delSql <- SqlRender::renderSql(delSql, resultsTable = resultsTable, analysisId = analysisId)$sql
-      delSql <- SqlRender::translateSql(delSql, targetDialect = connectionDetails$dbms)$sql
-      executeSql(delSql, progressBar = FALSE, reportOverallTime = FALSE)
-      sql <- c(sql, delSql) 
-    }
-    ictpdResults$metaData$sql <- sql
-    writeLines("Storing analysis results")
-    DatabaseConnector::dbInsertTable(conn, tableName, resultsTable, dropTableIfExists = createOutputTables, createTable = createOutputTables)
-  }
-  RJDBC::dbDisconnect(conn)
-  connectionDetails$conn <- NULL
-  return(ictpdResults)
+  analysis <- createIctpdAnalysis(analysisId = analysisId,
+                                  controlPeriodStart = controlPeriodStart,
+                                  controlPeriodEnd = controlPeriodEnd,
+                                  riskPeriodStart = riskPeriodStart,
+                                  riskPeriodEnd = riskPeriodEnd,
+                                  censor = censor,
+                                  multipleControlPeriods = multipleControlPeriods,
+                                  multipleRiskPeriods = multipleRiskPeriods,
+                                  shrinkage = shrinkage, 
+                                  icPercentile = icPercentile)
+  result <- runIctpdAnalyses(connectionDetails = connectionDetails, 
+                             cdmDatabaseSchema = cdmDatabaseSchema, 
+                             resultsDatabaseSchema = resultsDatabaseSchema, 
+                             exposureOutcomePairs = exposureOutcomePairs,
+                             exposureDatabaseSchema = exposureDatabaseSchema,
+                             exposureTable = exposureTable,
+                             outcomeDatabaseSchema = outcomeDatabaseSchema,
+                             outcomeTable = outcomeTable,
+                             drugTypeConceptIdList = drugTypeConceptIdList,
+                             conditionTypeConceptIdList = conditionTypeConceptIdList,
+                             storeResultsInDatabase = storeResultsInDatabase,
+                             createOutputTables = createOutputTables,
+                             outputTablePrefix = outputTablePrefix,
+                             ictpdAnalysisList = list(analysis))
+  return(result)
 }
 
 #' @title Get ICTPD counts from database
@@ -164,7 +116,7 @@ runIctpd <- function (connectionDetails,
 #' 
 #' @template GetDataParameters
 #' 
-#' @return An object of type \code{ictpdData} containing counts that can be used in the \code{\link{calculateStatisticsIC}} function.
+#' @return An object of type \code{ictpdData} containing counts that can be used in the \code{\link{calculateStatisticsIc}} function.
 #' 
 #' @template Example
 #' 
@@ -177,8 +129,8 @@ getDbIctpdData <- function (connectionDetails,
                             exposureTable = "drug_era",
                             outcomeDatabaseSchema = cdmDatabaseSchema,
                             outcomeTable = "condition_era",
-                            drugTypeConceptIdList = c(),
-                            conditionTypeConceptIdList = c(),
+                            drugTypeConceptIdList = c(38000182),
+                            conditionTypeConceptIdList = c(38000247),
                             
                             controlPeriodStart = -1080,
                             controlPeriodEnd = -361,
@@ -234,7 +186,6 @@ getDbIctpdData <- function (connectionDetails,
     conn <- connectionDetails$conn
   }
   
-  writeLines("Writing exposures and outcomes to database")
   exposures <- data.frame(type = 1, id = unique(exposureOutcomePairs$exposureConceptId))
   DatabaseConnector::dbInsertTable(conn, conceptsOfInterestTable, exposures, dropTableIfExists = TRUE)
   
@@ -329,7 +280,7 @@ ic <- function(obs,exp,shape.add=0.5,rate.add=0.5, percentile=0.025) {
 #' @template Example
 #' 
 #' @export
-calculateStatisticsIC <- function (ictpdData, 
+calculateStatisticsIc <- function (ictpdData, 
                                    multipleControlPeriods = '110',
                                    multipleRiskPeriods = '10000',
                                    shrinkage = 0.5, 
@@ -345,7 +296,7 @@ calculateStatisticsIC <- function (ictpdData,
   
   expectedControl = c();
   
-  controlPeriodItem=strsplit(toString(multipleControlPeriods[[1]][controlPeriod]),'');
+  controlPeriodItem=strsplit(toString(multipleControlPeriods[[1]]),'');
   
   tmpMat <- matrix(rep(NA, length(comb[['CXY_CONTROL']])), ncol=1);
   
@@ -375,7 +326,7 @@ calculateStatisticsIC <- function (ictpdData,
   # --  observation windows and     --
   # --  select the largest IC025    --
   # ----------------------------------
-  obsPeriodItem=strsplit(toString(multipleRiskPeriods[[1]][obsPeriod]),'');
+  obsPeriodItem=strsplit(toString(multipleRiskPeriods[[1]]),'');
   
   tmpMat <- matrix(rep(-99999999, length(comb[['CXY_CONTROL']])), ncol=1);
   
@@ -553,6 +504,34 @@ summary.ictpdResults <- function(object, ...){
   object$results
 }
 
+#' @title run ICTPD on a list of analysis
+#'
+#' @description
+#' This function will run the different ICTPD variations specified in the analysis list on all the exposure-
+#' outcome pairs. 
+#'
+#' @details
+#' Population-level estimation method that estimates risk by combining a self-controlled and cohort design.
+#' This function will call both the \code{\link{getDbIctpdData}} and \code{\link{calculateStatisticsIc}} functions.
+#'  
+#' @references
+#' Noren GN, Bate A, Hopstadius J, Star K, Edwards IR.  Temporal Pattern Discovery for Trends and Transient Effect: Its Application to Patient Reocrds. by combining a self-controlled design with a cohort design
+#' In: Proceedings of the fourteenth ACM SIGKDD International Conference on Knowledge Discovery and Data Mining (KDD'08).ACM Press, New York, pp 963-971
+#'  
+#' @template StudyParameters 
+#' 
+#' 
+#' @param storeResultsInDatabase Should the results be stored in the database?
+#' @param createOutputTables  Should the output tables be created? If not, they are assumed to exist and data will be appended.
+#' If the value is true and the tables exist they will be overwritten.
+#' @param outputTablePrefix   Prefix used for the result tables in the \code{resultsDatabaseSchema}. 
+#' 
+#' @param ictpdAnalysisList   A list of objects of type \code{ictpdAnalysis}.
+#'
+#' @return An object of type \code{ictpdResults} containing the results.
+#' 
+#' @template ExampleUsingAnalysis
+#' 
 #' @export
 runIctpdAnalyses <- function(connectionDetails, 
                              cdmDatabaseSchema, 
@@ -562,76 +541,116 @@ runIctpdAnalyses <- function(connectionDetails,
                              exposureTable = "drug_era",
                              outcomeDatabaseSchema = cdmDatabaseSchema,
                              outcomeTable = "condition_era",
-                             drugTypeConceptIdList = c(),
-                             conditionTypeConceptIdList = c(),
+                             drugTypeConceptIdList = c(38000182),
+                             conditionTypeConceptIdList = c(38000247),
+                             storeResultsInDatabase = FALSE,
+                             createOutputTables = TRUE,
+                             outputTablePrefix = "ictpd",
                              ictpdAnalysisList){
- #Todo: Need to implement this function so it efficiently runs over all analyses
-}
-
-#' @title writeIctpdAnalysesDetailsToFile
-#'
-#' @description
-#' \code{writeIctpdAnalysesDetailsToFile} writes an object of type \code{analysesDetails} to a CSV file
-#'  
-#' @param ictpdAnalysesDetails    the \code{ictpdAnalysesDetails} to be written to file
-#' @param file                  the name of the file where the results will be written
-#' @examples \dontrun{
-#'   analysesDetails <- NULL
-#'   analysesDetails <- appendToIctpdAnalysesDetails(createIctpdAnalysisDetails(analysisId = 1),analysesDetails)
-#'   analysesDetails <- appendToIctpdAnalysesDetails(createIctpdAnalysisDetails(analysisId = 2),analysesDetails)
-#'   writeIctpdAnalysesDetailsToFile(analysesDetails,"c:/temp/test.csv")
-#' }
-#' @export
-writeIctpdAnalysesDetailsToFile <- function(ictpdAnalysesDetails, file){
-  stopifnot(class(ictpdAnalysesDetails) == "ictpdAnalysesDetails")
-  
-  #Convert ictpdAnalysesDetails to a data.frame, converting any nested vectors into semicolon-delimited strings:
-  f <- ictpdAnalysesDetails
-  d <- data.frame()
-  for (row in 1:length(f)){
-    class(f[[row]]) <- "list"
-    for (column in 1:length(f[[row]])){
-      if ((class(f[[row]][[column]]) == "numeric") && (length(f[[row]][[column]]) > 1))
-        f[[row]][[column]] = paste(f[[row]][[column]],collapse=";")
-    }
-    d <- rbind(d,as.data.frame(f[[row]]))
+  stopifnot(class(ictpdAnalysisList) == "list")
+  stopifnot(length(ictpdAnalysisList) > 0)
+  for (i in 1:length(ictpdAnalysisList)){
+    stopifnot(class(ictpdAnalysisList[[1]]) == "ictpdAnalysis")
   }
   
-  write.csv(d,file=file, row.names=FALSE)
-}
-
-
-#' @title readIctpdAnalysesDetailsFromFile
-#'
-#' @description
-#' \code{readIctpdAnalysesDetailsFromFile} reads an object of type \code{analysesDetails} from a CSV file
-#'  
-#' @param file                  the name of the file to be loaded
-#' @return An object of type \code{analysesDetails}
-#' @examples \dontrun{
-#'   connectionDetails <- createConnectionDetails(dbms="sql server", server="RNDUSRDHIT07.jnj.com")
-#'   analysesDetails <- readIctpdAnalysesDetailsFromFile("c:/temp/test.csv")
-#'   ictpdResult <- IcTemporalPatternDiscovery(analysesDetails, connectionDetails, "cdm_truven_mdcr", "scratch", sourceName = "cdm_truven_mdcr", exposuresOfInterest = c(767410,1314924,907879), outcomesOfInterest = c(444382, 79106, 138825), outcomeTable = "condition_era")
-#' }
-#' @export
-readIctpdAnalysesDetailsFromFile <- function(file){
-  d <- read.csv(file)
-  d[is.na(d)] <- ""
-  ictpdAnalysesDetails <- list()
-  for (row in 1:nrow(d)){
-    ictpdAnalysisDetails <- as.list(d[row,])
-    for (column in c("drugTypeConceptIdList","conditionTypeConceptIdList")){
-      ictpdAnalysisDetails[[column]] <- as.numeric(unlist(strsplit(as.character(d[row,column]),";")))
+  cdmDatabase <- strsplit(cdmDatabaseSchema ,"\\.")[[1]][1]
+  resultsDatabase <- strsplit(resultsDatabaseSchema ,"\\.")[[1]][1]
+  
+  conn <- connect(connectionDetails)
+  connectionDetails$conn <- conn # Store it so we don't have to open it again
+  resultsList <- list()
+  sql <- c()
+  analyses <- .convertAnalysisListToDataFrame(ictpdAnalysisList)
+  getDbColumns = c("controlPeriodStart", "controlPeriodEnd", "riskPeriodStart", "riskPeriodEnd", "censor")
+  getDbRows <- unique(subset(analyses, select = getDbColumns))
+  for (i in 1 : nrow(getDbRows)){ #Iterate over all unique getDbIctpdData settings
+    getDbRow <- getDbRows[i,]
+    analysisIds <- plyr::match_df(analyses, getDbRow, on = getDbColumns)[,"analysisId"]
+    writeLines(paste("Fetching data for analyses", paste(analysisIds, collapse = ",")))
+    ictpdData <- getDbIctpdData(connectionDetails = connectionDetails, 
+                                cdmDatabaseSchema = cdmDatabaseSchema, 
+                                resultsDatabaseSchema = resultsDatabaseSchema, 
+                                exposureOutcomePairs = exposureOutcomePairs,
+                                exposureDatabaseSchema = exposureDatabaseSchema,
+                                exposureTable = exposureTable,
+                                outcomeDatabaseSchema = outcomeDatabaseSchema,
+                                outcomeTable = outcomeTable,
+                                drugTypeConceptIdList = drugTypeConceptIdList,
+                                conditionTypeConceptIdList = conditionTypeConceptIdList,
+                                
+                                controlPeriodStart = getDbRow$controlPeriodStart,
+                                controlPeriodEnd = getDbRow$controlPeriodEnd,
+                                riskPeriodStart = getDbRow$riskPeriodStart,
+                                riskPeriodEnd = getDbRow$riskPeriodEnd,
+                                censor = getDbRow$censor)  
+    sql <- c(sql, ictpdData$metaData$sql) 
+    calcIcRows <- plyr::match_df(analyses, getDbRow, on = getDbColumns)
+    for (j in 1:nrow(calcIcRows)){ #Iterate over all calculateStatisticsIc settings that use the ictpdData
+      calcIcRow <- calcIcRows[j,]
+      analysisId <- calcIcRow$analysisId
+      writeLines(paste("Computing statistics for analysis", analysisId))
+      ictpdResults <- calculateStatisticsIc(ictpdData = ictpdData, 
+                                            multipleControlPeriods = calcIcRow$multipleControlPeriods,
+                                            multipleRiskPeriods = calcIcRow$multipleRiskPeriods,
+                                            shrinkage = calcIcRow$shrinkage, 
+                                            icPercentile = calcIcRow$icPercentile,
+                                            metric = calcIcRow$metric)
+      #Store results in memory:
+      resultsTable <- ictpdResults$results
+      resultsTable$analysisId <- analysisId
+      resultsList[[length(resultsList) + 1]] <- resultsTable
+      
+      #Store results in database if requested"
+      if (storeResultsInDatabase){
+        writeLines("Storing parameters")
+        parameters <- data.frame(analysis_id = analysisId, parameter_name = colnames(calcIcRow), parameter_value = as.character(calcIcRow))
+        parameters <- parameters[parameters$parameter_name != "analysisId",]
+        tableName <- paste(resultsDatabaseSchema, ".", outputTablePrefix, "_analysis", sep = "")
+        if (!createOutputTables){
+          delSql <- "DELETE * FROM @analysisTable WHERE analysisId = @analysisId"
+          delSql <- SqlRender::renderSql(delSql, analysisTable = tableName, analysisId = analysisId)$sql
+          delSql <- SqlRender::translateSql(delSql, targetDialect = connectionDetails$dbms)$sql
+          executeSql(delSql, progressBar = FALSE, reportOverallTime = FALSE)
+          sql <- c(sql, delSql)      
+        }
+        DatabaseConnector::dbInsertTable(conn, tableName, parameters, dropTableIfExists = createOutputTables, createTable = createOutputTables)        
+        
+        writeLines("Storing results")
+        tableName <- paste(resultsDatabaseSchema, ".", outputTablePrefix, "_results", sep = "")
+        if (!createOutputTables){
+          delSql <- "DELETE * FROM @resultsTable WHERE analysisId = @analysisId"
+          delSql <- SqlRender::renderSql(delSql, resultsTable = tableName, analysisId = analysisId)$sql
+          delSql <- SqlRender::translateSql(delSql, targetDialect = connectionDetails$dbms)$sql
+          executeSql(delSql, progressBar = FALSE, reportOverallTime = FALSE)
+          sql <- c(sql, delSql) 
+        }
+        DatabaseConnector::dbInsertTable(conn, tableName, resultsTable, dropTableIfExists = createOutputTables, createTable = createOutputTables)
+        
+        createOutputTables = FALSE #Creating new tables only makes sense for the first analysis in the list
+      }
     }
-    class(ictpdAnalysisDetails) = "ictpdAnalysisDetails"
-    ictpdAnalysesDetails[[length(ictpdAnalysesDetails)+1]] <- ictpdAnalysisDetails
   }
-  class(ictpdAnalysesDetails) <- "ictpdAnalysesDetails"
-  ictpdAnalysesDetails
+  RJDBC::dbDisconnect(conn)
+  connectionDetails$conn <- NULL
+  metaData <- list(sql = sql,
+                         exposureOutcomePairs = exposureOutcomePairs,
+                         ictpdAnalysisList = ictpdAnalysisList,
+                         call = match.call())
+  ictpdAnalysesResults <- list(results = do.call("rbind", resultsList),
+                               metaData = metaData)
+  class(ictpdAnalysesResults) <- "ictpdAnalysesResults"
+  
+  return(ictpdAnalysesResults)
 }
 
+#' @export
+print.ictpdAnalysesResults <- function(x, ...){
+  output <- subset(x$results, select = c(EXPOSUREOFINTEREST, OUTCOMEOFINTEREST, analysisId, estimate))  
+  colnames(output) <- c("Exposure concept ID","Outcome concept ID", "Analysis ID", "Value")
+  printCoefmat(output)
+}
 
-
-
-
-
+#' @export
+summary.ictpdAnalysesResults <- function(object, ...){
+  object$results
+}

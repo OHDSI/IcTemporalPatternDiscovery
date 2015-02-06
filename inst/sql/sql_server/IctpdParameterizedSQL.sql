@@ -96,20 +96,35 @@ CREATE TABLE BASE_LINE_COUNTER_C (
 
 INSERT INTO BASE_LINE_COUNTER_C
 SELECT 
-  COUNT(CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, PA.reg_date) <= @controlPeriodEnd THEN DE.@exposureConceptId ELSE NULL END) as c_control,
-  COUNT(CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, PA.reg_date) <= -1                THEN DE.@exposureConceptId ELSE NULL END) as c_1m,
-  COUNT(CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, PA.reg_date) <= 0                 THEN DE.@exposureConceptId ELSE NULL END) as c_0m,
-  COUNT(CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, {@censor} ? {LEAST(PA.dereg_date, DE.@exposureEndDate)} : {PA.dereg_date}) >= @riskPeriodStart           THEN DE.@exposureConceptId ELSE NULL END) as c_observed_1_30,
-  COUNT(CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, {@censor} ? {LEAST(PA.dereg_date, DE.@exposureEndDate)} : {PA.dereg_date}) >= 1           THEN DE.@exposureConceptId ELSE NULL END) as c_observed_1_360,
-  COUNT(CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, {@censor} ? {LEAST(PA.dereg_date, DE.@exposureEndDate)} : {PA.dereg_date}) >= 31          THEN DE.@exposureConceptId ELSE NULL END) as c_observed_31_90,
-  COUNT(CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, {@censor} ? {LEAST(PA.dereg_date, DE.@exposureEndDate)} : {PA.dereg_date}) >= 91          THEN DE.@exposureConceptId ELSE NULL END) as c_observed_91_180,
-  COUNT(CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, {@censor} ? {LEAST(PA.dereg_date, DE.@exposureEndDate)} : {PA.dereg_date}) >= 721         THEN DE.@exposureConceptId ELSE NULL END) as c_observed_721_1080
+  COUNT(DISTINCT CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, PA.reg_date) <= @controlPeriodEnd THEN CAST(DE.@exposureStartDate AS VARCHAR) + '_' + CAST(DE.@exposureConceptId AS VARCHAR) ELSE NULL END) as c_control,
+  COUNT(DISTINCT CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, PA.reg_date) <= -1                THEN CAST(DE.@exposureStartDate AS VARCHAR) + '_' + CAST(DE.@exposureConceptId AS VARCHAR) ELSE NULL END) as c_1m,
+  COUNT(DISTINCT CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, PA.reg_date) <= 0                 THEN CAST(DE.@exposureStartDate AS VARCHAR) + '_' + CAST(DE.@exposureConceptId AS VARCHAR) ELSE NULL END) as c_0m,
+  COUNT(DISTINCT CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, {@censor} ? {LEAST(PA.dereg_date, DE.@exposureEndDate)} : {PA.dereg_date}) >= @riskPeriodStart           THEN CAST(DE.@exposureStartDate AS VARCHAR) + '_' + CAST(DE.@exposureConceptId AS VARCHAR) ELSE NULL END) as c_observed_1_30,
+  COUNT(DISTINCT CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, {@censor} ? {LEAST(PA.dereg_date, DE.@exposureEndDate)} : {PA.dereg_date}) >= 1           THEN CAST(DE.@exposureStartDate AS VARCHAR) + '_' + CAST(DE.@exposureConceptId AS VARCHAR) ELSE NULL END) as c_observed_1_360,
+  COUNT(DISTINCT CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, {@censor} ? {LEAST(PA.dereg_date, DE.@exposureEndDate)} : {PA.dereg_date}) >= 31          THEN CAST(DE.@exposureStartDate AS VARCHAR) + '_' + CAST(DE.@exposureConceptId AS VARCHAR) ELSE NULL END) as c_observed_31_90,
+  COUNT(DISTINCT CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, {@censor} ? {LEAST(PA.dereg_date, DE.@exposureEndDate)} : {PA.dereg_date}) >= 91          THEN CAST(DE.@exposureStartDate AS VARCHAR) + '_' + CAST(DE.@exposureConceptId AS VARCHAR) ELSE NULL END) as c_observed_91_180,
+  COUNT(DISTINCT CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, {@censor} ? {LEAST(PA.dereg_date, DE.@exposureEndDate)} : {PA.dereg_date}) >= 721         THEN CAST(DE.@exposureStartDate AS VARCHAR) + '_' + CAST(DE.@exposureConceptId AS VARCHAR) ELSE NULL END) as c_observed_721_1080
 FROM @exposureDatabaseSchema.@exposureTable DE
 JOIN PERSON_OPT              PA ON (DE.@exposurePersonId = PA.person_id)
 {@drugTypeConceptIdList != ''} ? {
 WHERE DE.drug_type_concept_id in (@drugTypeConceptIdList)
-}
-;
+};
+
+INSERT INTO BASE_LINE_COUNTER_C
+SELECT 
+  COUNT(DISTINCT CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, PA.reg_date) <= @controlPeriodEnd THEN CAST(DE.@exposureStartDate AS VARCHAR) + '_' + CAST(DE.@exposureConceptId AS VARCHAR) ELSE NULL END) as c_control,
+  COUNT(DISTINCT CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, PA.reg_date) <= -1                THEN CAST(DE.@exposureStartDate AS VARCHAR) + '_' + CAST(DE.@exposureConceptId AS VARCHAR) ELSE NULL END) as c_1m,
+  COUNT(DISTINCT CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, PA.reg_date) <= 0                 THEN CAST(DE.@exposureStartDate AS VARCHAR) + '_' + CAST(DE.@exposureConceptId AS VARCHAR) ELSE NULL END) as c_0m,
+  COUNT(DISTINCT CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, {@censor} ? {LEAST(PA.dereg_date, DE.@exposureEndDate)} : {PA.dereg_date}) >= @riskPeriodStart           THEN CAST(DE.@exposureStartDate AS VARCHAR) + '_' + CAST(DE.@exposureConceptId AS VARCHAR) ELSE NULL END) as c_observed_1_30,
+  COUNT(DISTINCT CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, {@censor} ? {LEAST(PA.dereg_date, DE.@exposureEndDate)} : {PA.dereg_date}) >= 1           THEN CAST(DE.@exposureStartDate AS VARCHAR) + '_' + CAST(DE.@exposureConceptId AS VARCHAR) ELSE NULL END) as c_observed_1_360,
+  COUNT(DISTINCT CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, {@censor} ? {LEAST(PA.dereg_date, DE.@exposureEndDate)} : {PA.dereg_date}) >= 31          THEN CAST(DE.@exposureStartDate AS VARCHAR) + '_' + CAST(DE.@exposureConceptId AS VARCHAR) ELSE NULL END) as c_observed_31_90,
+  COUNT(DISTINCT CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, {@censor} ? {LEAST(PA.dereg_date, DE.@exposureEndDate)} : {PA.dereg_date}) >= 91          THEN CAST(DE.@exposureStartDate AS VARCHAR) + '_' + CAST(DE.@exposureConceptId AS VARCHAR) ELSE NULL END) as c_observed_91_180,
+  COUNT(DISTINCT CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, {@censor} ? {LEAST(PA.dereg_date, DE.@exposureEndDate)} : {PA.dereg_date}) >= 721         THEN CAST(DE.@exposureStartDate AS VARCHAR) + '_' + CAST(DE.@exposureConceptId AS VARCHAR) ELSE NULL END) as c_observed_721_1080
+FROM @exposureDatabaseSchema.@exposureTable DE
+JOIN PERSON_OPT              PA ON (DE.@exposurePersonId = PA.person_id)
+{@drugTypeConceptIdList != ''} ? {
+WHERE DE.drug_type_concept_id in (@drugTypeConceptIdList)
+};
 
 /*****************
 BASE_LINE_COUNTER_CY
@@ -129,14 +144,14 @@ CREATE TABLE BASE_LINE_COUNTER_CY (
 
 INSERT INTO BASE_LINE_COUNTER_CY
 SELECT CE.@outcomeConceptId,
-  COUNT(CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, CE.@outcomeStartDate) between @controlPeriodStart AND @controlPeriodEnd THEN DE.@exposureConceptId ELSE NULL END) AS cy_control,
-  COUNT(CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, CE.@outcomeStartDate) between -30 AND -1 THEN DE.@exposureConceptId ELSE NULL END) AS cy_1m,
-  COUNT(CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, CE.@outcomeStartDate) = 0 THEN DE.@exposureConceptId ELSE NULL END) AS cy_0m,
-  COUNT(CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, CE.@outcomeStartDate) between @riskPeriodStart AND @riskPeriodEnd {@censor} ? {AND CE.@outcomeStartDate < DE.@exposureEndDate} : {} THEN DE.@exposureConceptId ELSE NULL END) AS cy_observed_1_30,
-  COUNT(CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, CE.@outcomeStartDate) between 1 AND 360 {@censor} ? {AND CE.@outcomeStartDate < DE.@exposureEndDate} : {} THEN DE.@exposureConceptId ELSE NULL END) AS cy_observed_1_360,
-  COUNT(CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, CE.@outcomeStartDate) between 31 AND 90 {@censor} ? {AND CE.@outcomeStartDate < DE.@exposureEndDate} : {} THEN DE.@exposureConceptId ELSE NULL END) AS cy_observed_31_90,
-  COUNT(CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, CE.@outcomeStartDate) between 91 AND 180 {@censor} ? {AND CE.@outcomeStartDate < DE.@exposureEndDate} : {} THEN DE.@exposureConceptId ELSE NULL END) AS cy_observed_91_180,
-  COUNT(CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, CE.@outcomeStartDate) between 721 AND 1080 {@censor} ? {AND CE.@outcomeStartDate < DE.@exposureEndDate} : {} THEN DE.@exposureConceptId ELSE NULL END) AS cy_observed_721_1080
+  COUNT(DISTINCT CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, CE.@outcomeStartDate) between @controlPeriodStart AND @controlPeriodEnd THEN CAST(DE.@exposureStartDate AS VARCHAR) + '_' + CAST(DE.@exposureConceptId AS VARCHAR) ELSE NULL END) AS cy_control,
+  COUNT(DISTINCT CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, CE.@outcomeStartDate) between -30 AND -1 THEN CAST(DE.@exposureStartDate AS VARCHAR) + '_' + CAST(DE.@exposureConceptId AS VARCHAR) ELSE NULL END) AS cy_1m,
+  COUNT(DISTINCT CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, CE.@outcomeStartDate) = 0 THEN CAST(DE.@exposureStartDate AS VARCHAR) + '_' + CAST(DE.@exposureConceptId AS VARCHAR) ELSE NULL END) AS cy_0m,
+  COUNT(DISTINCT CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, CE.@outcomeStartDate) between @riskPeriodStart AND @riskPeriodEnd {@censor} ? {AND CE.@outcomeStartDate < DE.@exposureEndDate} : {} THEN CAST(DE.@exposureStartDate AS VARCHAR) + '_' + CAST(DE.@exposureConceptId AS VARCHAR) ELSE NULL END) AS cy_observed_1_30,
+  COUNT(DISTINCT CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, CE.@outcomeStartDate) between 1 AND 360 {@censor} ? {AND CE.@outcomeStartDate < DE.@exposureEndDate} : {} THEN CAST(DE.@exposureStartDate AS VARCHAR) + '_' + CAST(DE.@exposureConceptId AS VARCHAR) ELSE NULL END) AS cy_observed_1_360,
+  COUNT(DISTINCT CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, CE.@outcomeStartDate) between 31 AND 90 {@censor} ? {AND CE.@outcomeStartDate < DE.@exposureEndDate} : {} THEN CAST(DE.@exposureStartDate AS VARCHAR) + '_' + CAST(DE.@exposureConceptId AS VARCHAR) ELSE NULL END) AS cy_observed_31_90,
+  COUNT(DISTINCT CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, CE.@outcomeStartDate) between 91 AND 180 {@censor} ? {AND CE.@outcomeStartDate < DE.@exposureEndDate} : {} THEN CAST(DE.@exposureStartDate AS VARCHAR) + '_' + CAST(DE.@exposureConceptId AS VARCHAR) ELSE NULL END) AS cy_observed_91_180,
+  COUNT(DISTINCT CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, CE.@outcomeStartDate) between 721 AND 1080 {@censor} ? {AND CE.@outcomeStartDate < DE.@exposureEndDate} : {} THEN CAST(DE.@exposureStartDate AS VARCHAR) + '_' + CAST(DE.@exposureConceptId AS VARCHAR) ELSE NULL END) AS cy_observed_721_1080
 FROM @outcomeDatabaseSchema.@outcomeTable   CE
 JOIN @exposureDatabaseSchema.@exposureTable  DE ON (CE.@outcomePersonId = DE.@exposurePersonId)
 JOIN concepts_of_interest                    COI ON (CE.@outcomeConceptId = COI.id AND COI.type = 2)
@@ -168,14 +183,14 @@ CREATE TABLE BASE_LINE_COUNTER_CX(
 
 INSERT INTO BASE_LINE_COUNTER_CX 
 SELECT DE.@exposureConceptId, 
-  COUNT(CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, PA.reg_date) <= @controlPeriodEnd THEN DE.@exposureConceptId ELSE NULL END) as cx_control,
-  COUNT(CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, PA.reg_date) <= -1                THEN DE.@exposureConceptId ELSE NULL END) as cx_1m,
-  COUNT(CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, PA.reg_date) <= 0                 THEN DE.@exposureConceptId ELSE NULL END) as cx_0m,
-  COUNT(CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, {@censor} ? {LEAST(PA.dereg_date, DE.@exposureEndDate)} : {PA.dereg_date}) >= @riskPeriodStart THEN DE.@exposureConceptId ELSE NULL END) as cx_observed_1_30,
-  COUNT(CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, {@censor} ? {LEAST(PA.dereg_date, DE.@exposureEndDate)} : {PA.dereg_date}) >= 1 THEN DE.@exposureConceptId ELSE NULL END) as cx_observed_1_360,
-  COUNT(CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, {@censor} ? {LEAST(PA.dereg_date, DE.@exposureEndDate)} : {PA.dereg_date}) >= 31 THEN DE.@exposureConceptId ELSE NULL END) as cx_observed_31_90,
-  COUNT(CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, {@censor} ? {LEAST(PA.dereg_date, DE.@exposureEndDate)} : {PA.dereg_date}) >= 91 THEN DE.@exposureConceptId ELSE NULL END) as cx_observed_91_180,
-  COUNT(CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, {@censor} ? {LEAST(PA.dereg_date, DE.@exposureEndDate)} : {PA.dereg_date}) >= 721 THEN DE.@exposureConceptId ELSE NULL END) as cx_observed_721_1080
+  COUNT(DISTINCT CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, PA.reg_date) <= @controlPeriodEnd THEN CAST(DE.@exposureStartDate AS VARCHAR) + '_' + CAST(DE.@exposureConceptId AS VARCHAR) ELSE NULL END) as cx_control,
+  COUNT(DISTINCT CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, PA.reg_date) <= -1                THEN CAST(DE.@exposureStartDate AS VARCHAR) + '_' + CAST(DE.@exposureConceptId AS VARCHAR) ELSE NULL END) as cx_1m,
+  COUNT(DISTINCT CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, PA.reg_date) <= 0                 THEN CAST(DE.@exposureStartDate AS VARCHAR) + '_' + CAST(DE.@exposureConceptId AS VARCHAR) ELSE NULL END) as cx_0m,
+  COUNT(DISTINCT CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, {@censor} ? {LEAST(PA.dereg_date, DE.@exposureEndDate)} : {PA.dereg_date}) >= @riskPeriodStart THEN CAST(DE.@exposureStartDate AS VARCHAR) + '_' + CAST(DE.@exposureConceptId AS VARCHAR) ELSE NULL END) as cx_observed_1_30,
+  COUNT(DISTINCT CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, {@censor} ? {LEAST(PA.dereg_date, DE.@exposureEndDate)} : {PA.dereg_date}) >= 1 THEN CAST(DE.@exposureStartDate AS VARCHAR) + '_' + CAST(DE.@exposureConceptId AS VARCHAR) ELSE NULL END) as cx_observed_1_360,
+  COUNT(DISTINCT CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, {@censor} ? {LEAST(PA.dereg_date, DE.@exposureEndDate)} : {PA.dereg_date}) >= 31 THEN CAST(DE.@exposureStartDate AS VARCHAR) + '_' + CAST(DE.@exposureConceptId AS VARCHAR) ELSE NULL END) as cx_observed_31_90,
+  COUNT(DISTINCT CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, {@censor} ? {LEAST(PA.dereg_date, DE.@exposureEndDate)} : {PA.dereg_date}) >= 91 THEN CAST(DE.@exposureStartDate AS VARCHAR) + '_' + CAST(DE.@exposureConceptId AS VARCHAR) ELSE NULL END) as cx_observed_91_180,
+  COUNT(DISTINCT CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, {@censor} ? {LEAST(PA.dereg_date, DE.@exposureEndDate)} : {PA.dereg_date}) >= 721 THEN CAST(DE.@exposureStartDate AS VARCHAR) + '_' + CAST(DE.@exposureConceptId AS VARCHAR) ELSE NULL END) as cx_observed_721_1080
 FROM @exposureDatabaseSchema.@exposureTable DE
 JOIN PERSON_OPT                PA ON DE.@exposurePersonId = PA.person_id
 JOIN concepts_of_interest      COI ON (DE.@exposureConceptId = COI.id AND COI.type = 1)
@@ -204,14 +219,14 @@ CREATE TABLE BASE_LINE_COUNTER_CXY(
 
 INSERT INTO BASE_LINE_COUNTER_CXY
 SELECT DE.@exposureConceptId, CE.@outcomeConceptId,
-  COUNT(CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, CE.@outcomeStartDate) between @controlPeriodStart AND @controlPeriodEnd THEN DE.@exposureConceptId ELSE NULL END) AS cxy_control,
-  COUNT(CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, CE.@outcomeStartDate) between -30 AND -1                            THEN DE.@exposureConceptId ELSE NULL END) AS cxy_1m,
-  COUNT(CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, CE.@outcomeStartDate) = 0                                           THEN DE.@exposureConceptId ELSE NULL END) AS cxy_0m,
-  COUNT(CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, CE.@outcomeStartDate) between @riskPeriodStart AND @riskPeriodEnd {@censor} ? {AND CE.@outcomeStartDate < DE.@exposureEndDate} : {}      THEN DE.@exposureConceptId ELSE NULL END) AS cxy_observed_1_30,
-  COUNT(CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, CE.@outcomeStartDate) between 1 AND 360 {@censor} ? {AND CE.@outcomeStartDate < DE.@exposureEndDate} : {}     THEN DE.@exposureConceptId ELSE NULL END) AS cxy_observed_1_360,
-  COUNT(CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, CE.@outcomeStartDate) between 31 AND 90 {@censor} ? {AND CE.@outcomeStartDate < DE.@exposureEndDate} : {}     THEN DE.@exposureConceptId ELSE NULL END) AS cxy_observed_31_90,
-  COUNT(CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, CE.@outcomeStartDate) between 91 AND 180 {@censor} ? {AND CE.@outcomeStartDate < DE.@exposureEndDate} : {}    THEN DE.@exposureConceptId ELSE NULL END) AS cxy_observed_91_180,
-  COUNT(CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, CE.@outcomeStartDate) between 721 AND 1080 {@censor} ? {AND CE.@outcomeStartDate < DE.@exposureEndDate} : {}  THEN DE.@exposureConceptId ELSE NULL END) AS cxy_observed_721_1080
+  COUNT(DISTINCT CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, CE.@outcomeStartDate) between @controlPeriodStart AND @controlPeriodEnd THEN CAST(DE.@exposureStartDate AS VARCHAR) + '_' + CAST(DE.@exposureConceptId AS VARCHAR) ELSE NULL END) AS cxy_control,
+  COUNT(DISTINCT CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, CE.@outcomeStartDate) between -30 AND -1                            THEN CAST(DE.@exposureStartDate AS VARCHAR) + '_' + CAST(DE.@exposureConceptId AS VARCHAR) ELSE NULL END) AS cxy_1m,
+  COUNT(DISTINCT CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, CE.@outcomeStartDate) = 0                                           THEN CAST(DE.@exposureStartDate AS VARCHAR) + '_' + CAST(DE.@exposureConceptId AS VARCHAR) ELSE NULL END) AS cxy_0m,
+  COUNT(DISTINCT CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, CE.@outcomeStartDate) between @riskPeriodStart AND @riskPeriodEnd {@censor} ? {AND CE.@outcomeStartDate < DE.@exposureEndDate} : {}      THEN CAST(DE.@exposureStartDate AS VARCHAR) + '_' + CAST(DE.@exposureConceptId AS VARCHAR) ELSE NULL END) AS cxy_observed_1_30,
+  COUNT(DISTINCT CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, CE.@outcomeStartDate) between 1 AND 360 {@censor} ? {AND CE.@outcomeStartDate < DE.@exposureEndDate} : {}     THEN CAST(DE.@exposureStartDate AS VARCHAR) + '_' + CAST(DE.@exposureConceptId AS VARCHAR) ELSE NULL END) AS cxy_observed_1_360,
+  COUNT(DISTINCT CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, CE.@outcomeStartDate) between 31 AND 90 {@censor} ? {AND CE.@outcomeStartDate < DE.@exposureEndDate} : {}     THEN CAST(DE.@exposureStartDate AS VARCHAR) + '_' + CAST(DE.@exposureConceptId AS VARCHAR) ELSE NULL END) AS cxy_observed_31_90,
+  COUNT(DISTINCT CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, CE.@outcomeStartDate) between 91 AND 180 {@censor} ? {AND CE.@outcomeStartDate < DE.@exposureEndDate} : {}    THEN CAST(DE.@exposureStartDate AS VARCHAR) + '_' + CAST(DE.@exposureConceptId AS VARCHAR) ELSE NULL END) AS cxy_observed_91_180,
+  COUNT(DISTINCT CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, CE.@outcomeStartDate) between 721 AND 1080 {@censor} ? {AND CE.@outcomeStartDate < DE.@exposureEndDate} : {}  THEN CAST(DE.@exposureStartDate AS VARCHAR) + '_' + CAST(DE.@exposureConceptId AS VARCHAR) ELSE NULL END) AS cxy_observed_721_1080
 FROM @outcomeDatabaseSchema.@outcomeTable       CE
 JOIN @exposureDatabaseSchema.@exposureTable     DE  ON CE.@outcomePersonId = DE.@exposurePersonId
 JOIN PERSON_OPT                        PA  ON DE.@exposurePersonId = PA.person_id

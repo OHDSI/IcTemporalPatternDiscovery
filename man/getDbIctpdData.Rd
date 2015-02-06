@@ -7,8 +7,8 @@
 getDbIctpdData(connectionDetails, cdmDatabaseSchema, resultsDatabaseSchema,
   exposureOutcomePairs, exposureDatabaseSchema = cdmDatabaseSchema,
   exposureTable = "drug_era", outcomeDatabaseSchema = cdmDatabaseSchema,
-  outcomeTable = "condition_era", drugTypeConceptIdList = c(),
-  conditionTypeConceptIdList = c(), controlPeriodStart = -1080,
+  outcomeTable = "condition_era", drugTypeConceptIdList = c(38000182),
+  conditionTypeConceptIdList = c(38000247), controlPeriodStart = -1080,
   controlPeriodEnd = -361, riskPeriodStart = 1, riskPeriodEnd = 30,
   censor = FALSE)
 }
@@ -48,7 +48,7 @@ getDbIctpdData(connectionDetails, cdmDatabaseSchema, resultsDatabaseSchema,
 \item{censor}{a flag indicating wether the method should censor the observation period at the end of exposure or not. Available input is 0 or 1 with default = 0.}
 }
 \value{
-An object of type \code{ictpdData} containing counts that can be used in the \code{\link{calculateStatisticsIC}} function.
+An object of type \code{ictpdData} containing counts that can be used in the \code{\link{calculateStatisticsIc}} function.
 }
 \description{
 This function is used to load the counts needed to compute the ICTPD from a database in OMOP CDM format.
@@ -56,8 +56,12 @@ This function is used to load the counts needed to compute the ICTPD from a data
 \examples{
 \dontrun{
 connectionDetails <- createConnectionDetails(dbms="sql server", server="server_ip")
-exposureOutcomePairs = data.frame(outcomeConceptId = c(196794, 196794, 312648), exposureConceptId = c(1501700, 1545958, 1551803))
-ictpdData <- getDbIctpdData(connectionDetails, cdmDatabaseSchema = "cdm_schema.dbo", resultsDatabaseSchema = "results.dbo", exposureOutcomePairs = exposureOutcomePairs)
+exposureOutcomePairs = data.frame(outcomeConceptId = c(196794, 196794, 312648),
+                                  exposureConceptId = c(1501700, 1545958, 1551803))
+ictpdData <- getDbIctpdData(connectionDetails,
+                            cdmDatabaseSchema = "cdm_schema.dbo",
+                            resultsDatabaseSchema = "results.dbo",
+                            exposureOutcomePairs = exposureOutcomePairs)
 ictpdResults <- calculateStatisticsIC(ictpdData)
 ictpdResults
 }
