@@ -1,7 +1,6 @@
 IC Temporal Pattern Discovery
 =============================
 
-
 Introduction
 ============
 
@@ -9,11 +8,30 @@ This R package is an implementation of the IC Temporal Pattern Discovery method 
 
 Features
 ========
-- Todo
+- Extracts the necessary data from a database in OMOP Common Data Model format.
+- Supports various risk and control window definitions
 
-Examples
-========
-Todo
+Example
+=======
+```r
+library(SelfControlledCohort)
+
+connectionDetails <- createConnectionDetails(dbms = "postgresql",
+                                             user = "joe",
+                                             password = "secret",
+                                             server = "myserver")
+                                             
+exposureOutcomePairs = data.frame(outcomeId = c(196794, 196794, 312648), 
+                                   exposurId = c(1501700, 1545958, 1551803))
+                                   
+ictpdData <- getDbIctpdData(connectionDetails, 
+                             cdmDatabaseSchema = "cdm_schema.dbo", 
+                             exposureOutcomePairs = exposureOutcomePairs)
+                             
+ictpdResults <- calculateStatisticsIC(ictpdData)
+ 
+ictpdResults                                             
+```
 
 Technology
 ============
@@ -25,6 +43,8 @@ Requires R (version 3.1.0 or higher). Libraries used in this package require Jav
 
 Dependencies
 ============
+
+ * OhdsiRTools
  * DatabaseConnector
  * SqlRender
 
@@ -37,6 +57,7 @@ Getting Started
   ```r
   install.packages("devtools")
   library(devtools)
+  install_github("ohdsi/OhdsiRTools") 
   install_github("ohdsi/SqlRender") 
   install_github("ohdsi/DatabaseConnector") 
   install_github("ohdsi/IcTemporalPatternDiscovery") 
@@ -62,4 +83,4 @@ Alpha
 
 
 # Acknowledgements
-This package was developed by Tomas Bergvall
+This package was developed by Tomas Bergvall, adapted by Martijn Schuemie.
