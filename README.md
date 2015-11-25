@@ -22,11 +22,11 @@ connectionDetails <- createConnectionDetails(dbms = "postgresql",
                                              server = "myserver")
                                              
 exposureOutcomePairs = data.frame(outcomeId = c(196794, 196794, 312648), 
-                                   exposurId = c(1501700, 1545958, 1551803))
+                                  exposurId = c(1501700, 1545958, 1551803))
                                    
 ictpdData <- getDbIctpdData(connectionDetails, 
-                             cdmDatabaseSchema = "cdm_schema.dbo", 
-                             exposureOutcomePairs = exposureOutcomePairs)
+                            cdmDatabaseSchema = "cdm_schema.dbo", 
+                            exposureOutcomePairs = exposureOutcomePairs)
                              
 ictpdResults <- calculateStatisticsIC(ictpdData)
  
@@ -65,7 +65,7 @@ Getting Started
 
 Getting Involved
 =============
-* Package manual: [IcTemporalPatternDiscovery.pdf](https://raw.githubusercontent.com/OHDSI/IcTemporalPatternDiscovery/master/man/IcTemporalPatternDiscovery.pdf) 
+* Package manual: [IcTemporalPatternDiscovery.pdf](https://raw.githubusercontent.com/OHDSI/IcTemporalPatternDiscovery/master/extras/IcTemporalPatternDiscovery.pdf) 
 * Developer questions/comments/feedback: <a href="http://forums.ohdsi.org/c/developers">OHDSI Forum</a>
 * We use the <a href="../../issues">GitHub issue tracker</a> for all bugs/issues/enhancements
  
