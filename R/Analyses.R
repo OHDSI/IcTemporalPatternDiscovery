@@ -19,29 +19,30 @@
 #' Create ICTPD analysis details
 #'
 #' @description
-#' \code{createIctpdAnalysis} generates an object specifying one set of analysis choices
-#' for the IC Temporal Pattern Discovery method.
-#'  
-#' @param analysisId  	A unique identifier that can later be used to identify the results of this analysis
-#' @param description                   A short description of the analysis.
-#' @param exposureType                  If more than one exposure is provided for each exposureOutcome,
-#'                                      this field should be used to select the specific exposure to
-#'                                      use in this analysis.
-#' @param outcomeType                   If more than one outcome is provided for each exposureOutcome,
-#'                                      this field should be used to select the specific outcome to use
-#'                                      in this analysis.
-#' @param getDbIctpdDataArgs   An object representing the arguments to be used when calling
-#'                                      the \code{\link{getDbIctpdData}} function.    
-#' @param calculateStatisticsIcArgs   An object representing the arguments to be used when calling
-#'                                      the \code{\link{calculateStatisticsIc}} function.                                   
-#' 
+#' \code{createIctpdAnalysis} generates an object specifying one set of analysis choices for the IC
+#' Temporal Pattern Discovery method.
+#'
+#' @param analysisId                  A unique identifier that can later be used to identify the
+#'                                    results of this analysis
+#' @param description                 A short description of the analysis.
+#' @param exposureType                If more than one exposure is provided for each exposureOutcome,
+#'                                    this field should be used to select the specific exposure to use
+#'                                    in this analysis.
+#' @param outcomeType                 If more than one outcome is provided for each exposureOutcome,
+#'                                    this field should be used to select the specific outcome to use
+#'                                    in this analysis.
+#' @param getDbIctpdDataArgs          An object representing the arguments to be used when calling the
+#'                                    \code{\link{getDbIctpdData}} function.
+#' @param calculateStatisticsIcArgs   An object representing the arguments to be used when calling the
+#'                                    \code{\link{calculateStatisticsIc}} function.
+#'
 #' @export
 createIctpdAnalysis <- function(analysisId = 1,
                                 description = "",
                                 exposureType = NULL,
                                 outcomeType = NULL,
                                 getDbIctpdDataArgs,
-                                calculateStatisticsIcArgs){
+                                calculateStatisticsIcArgs) {
   ictpdAnalysis <- OhdsiRTools::convertArgsToList(match.call(), "ictpdAnalysis")
   return(ictpdAnalysis)
 }
@@ -52,7 +53,7 @@ createIctpdAnalysis <- function(analysisId = 1,
 #' Write a list of objects of type \code{ictpdAnalysis} to file. The file is in JSON format.
 #'
 #' @param ictpdAnalysisList   The ictpdAnalysis list to be written to file
-#' @param file              The name of the file where the results will be written
+#' @param file                The name of the file where the results will be written
 #'
 #' @export
 saveIctpdAnalysisList <- function(ictpdAnalysisList, file) {
@@ -101,8 +102,8 @@ loadIctpdAnalysisList <- function(file) {
 #' @param outcomeId    A concept ID indentifying the outcome of interest in the outcome table. If
 #'                     multiple strategies for picking the outcome will be tested in the analysis, a
 #'                     named list of numbers can be provided instead. In the analysis, the name of the
-#'                     number to be used can be specified using the \code{outcomeType} parameter in
-#'                     the \code{\link{createIctpdAnalysis}} function.
+#'                     number to be used can be specified using the \code{outcomeType} parameter in the
+#'                     \code{\link{createIctpdAnalysis}} function.
 #'
 #' @export
 createExposureOutcome <- function(exposureId, outcomeId) {

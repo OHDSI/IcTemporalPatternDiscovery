@@ -21,7 +21,7 @@
   OhdsiRTools::checkUsagePackage("IcTemporalPatternDiscovery")
 }
 
-.createManualAndVignettes <- function(){
+.createManualAndVignettes <- function() {
   shell("rm extras/IcTemporalPatternDiscovery.pdf")
   shell("R CMD Rd2pdf ./ --output=extras/IcTemporalPatternDiscovery.pdf")
 }

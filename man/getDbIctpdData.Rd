@@ -14,49 +14,80 @@ getDbIctpdData(connectionDetails, cdmDatabaseSchema,
   censor = FALSE)
 }
 \arguments{
-\item{connectionDetails}{An R object of type \code{ConnectionDetails} created using the function \code{createConnectionDetails} in the \code{DatabaseConnector} package.}
+\item{connectionDetails}{An R object of type \code{ConnectionDetails} created using
+the function \code{createConnectionDetails} in the
+\code{DatabaseConnector} package.}
 
-\item{cdmDatabaseSchema}{Name of database schema that contains OMOP CDM and vocabulary.}
+\item{cdmDatabaseSchema}{Name of database schema that contains OMOP CDM and
+vocabulary.}
 
-\item{oracleTempSchema}{For Oracle only: the name of the database schema where you want
-all temporary tables to be managed. Requires create/insert
-permissions to this database.}
+\item{oracleTempSchema}{For Oracle only: the name of the database schema where you
+want all temporary tables to be managed. Requires
+create/insert permissions to this database.}
 
-\item{cdmVersion}{Define the OMOP CDM version used: currently support "4" and "5".}
+\item{cdmVersion}{Define the OMOP CDM version used: currently support "4" and
+"5".}
 
 \item{exposureOutcomePairs}{A data frame with at least two columns:
-\itemize{
-  \item{"exposureId" containing the drug_concept_ID or cohort_concept_id of the exposure variable}
-  \item{"outcomeId" containing the condition_concept_ID or cohort_concept_id of the outcome variable}
-}}
+                                         \itemize{
+                                           \item {"exposureId" containing the drug_concept_ID or
+                                                 cohort_concept_id of the exposure variable}
+                                           \item {"outcomeId" containing the condition_concept_ID or
+                                                 cohort_concept_id of the outcome variable}
+                                         }}
 
-\item{exposureDatabaseSchema}{The name of the database schema that is the location where the exposure data is available.  If exposureTable = DRUG_ERA, exposureSchema is not used by assumed to be cdmSchema.  Requires read permissions to this database.}
+\item{exposureDatabaseSchema}{The name of the database schema that is the location where
+the exposure data is available.  If exposureTable =
+DRUG_ERA, exposureSchema is not used by assumed to be
+cdmSchema.  Requires read permissions to this database.}
 
-\item{exposureTable}{The tablename that contains the exposure cohorts.  If exposureTable <> DRUG_ERA, then expectation is exposureTable has format of COHORT table: COHORT_DEFINITION_ID, SUBJECT_ID, COHORT_START_DATE, COHORT_END_DATE.}
+\item{exposureTable}{The tablename that contains the exposure cohorts.  If
+exposureTable <> DRUG_ERA, then expectation is
+exposureTable has format of COHORT table:
+COHORT_DEFINITION_ID, SUBJECT_ID, COHORT_START_DATE,
+COHORT_END_DATE.}
 
-\item{outcomeDatabaseSchema}{The name of the database schema that is the location where the data used to define the outcome cohorts is available.  If exposureTable = CONDITION_ERA, exposureSchema is not used by assumed to be cdmSchema.  Requires read permissions to this database.}
+\item{outcomeDatabaseSchema}{The name of the database schema that is the location where
+the data used to define the outcome cohorts is available.
+If exposureTable = CONDITION_ERA, exposureSchema is not
+used by assumed to be cdmSchema.  Requires read permissions
+to this database.}
 
-\item{outcomeTable}{The tablename that contains the outcome cohorts.  If outcomeTable <> CONDITION_OCCURRENCE, then expectation is outcomeTable has format of COHORT table: COHORT_DEFINITION_ID, SUBJECT_ID, COHORT_START_DATE, COHORT_END_DATE.}
+\item{outcomeTable}{The tablename that contains the outcome cohorts.  If
+outcomeTable <> CONDITION_OCCURRENCE, then expectation is
+outcomeTable has format of COHORT table:
+COHORT_DEFINITION_ID, SUBJECT_ID, COHORT_START_DATE,
+COHORT_END_DATE.}
 
-\item{drugTypeConceptIdList}{Which drug_type to use:  generally only use 1 value (ex:  30d era).}
+\item{drugTypeConceptIdList}{Which drug_type to use: generally only use 1 value (ex: 30d
+era).}
 
-\item{conditionTypeConceptIdList}{Which condition_type to use:  generally only use 1 value (ex:  30d era).}
+\item{controlPeriodStart}{start of the control period - can be set between -99999 and
+0, default is -1080.}
 
-\item{controlPeriodStart}{start of the control period - can be set between -99999 and 0, default is -1080.}
+\item{controlPeriodEnd}{end of the control period - can be set between -99999 and
+0, default is -361.}
 
-\item{controlPeriodEnd}{end of the control period - can be set between -99999 and 0, default is -361.}
+\item{riskPeriodStart}{start of the risk period - can be set between 0 and 99999,
+default is 1.}
 
-\item{riskPeriodStart}{start of the risk period - can be set between 0 and 99999, default is 1.}
+\item{riskPeriodEnd}{end of the risk period - can be set between 0 and 99999,
+default is 30.}
 
-\item{riskPeriodEnd}{end of the risk period - can be set between 0 and 99999, default is 30.}
+\item{censor}{a flag indicating wether the method should censor the
+                                         observation period at the end of exposure or not. Available
+                                         input is 0 or 1 with default = 0.}
 
-\item{censor}{a flag indicating wether the method should censor the observation period at the end of exposure or not. Available input is 0 or 1 with default = 0.}
+\item{conditionTypeConceptIdListWhich}{condition_type to use: generally only use 1 value (ex: 30d
+era).}
 }
 \value{
-An object of type \code{ictpdData} containing counts that can be used in the \code{\link{calculateStatisticsIc}} function.
+An object of type \code{ictpdData} containing counts that can be used in the
+\code{\link{calculateStatisticsIc}} function.
 }
 \description{
-This function is used to load the counts needed to compute the ICTPD from a database in OMOP CDM format.
+This function is used to load the counts needed to compute the ICTPD from a database in OMOP CDM
+format.
 }
 \examples{
 \dontrun{
@@ -66,8 +97,8 @@ connectionDetails <- createConnectionDetails(dbms = "postgresql",
                                              user = "joe",
                                              password = "secret",
                                              server = "myserver")
-exposureOutcomePairs = data.frame(outcomeId = c(196794, 196794, 312648),
-                                  exposurId = c(1501700, 1545958, 1551803))
+exposureOutcomePairs <- data.frame(outcomeId = c(196794, 196794, 312648),
+                                   exposurId = c(1501700, 1545958, 1551803))
 ictpdData <- getDbIctpdData(connectionDetails,
                             cdmDatabaseSchema = "cdm_schema.dbo",
                             exposureOutcomePairs = exposureOutcomePairs)

@@ -16,8 +16,8 @@ the \code{\link{createIctpdAnalysis}} function.}
 \item{outcomeId}{A concept ID indentifying the outcome of interest in the outcome table. If
                     multiple strategies for picking the outcome will be tested in the analysis, a
                     named list of numbers can be provided instead. In the analysis, the name of the
-                    number to be used can be specified using the \code{outcomeType} parameter in
-                    the \code{\link{createIctpdAnalysis}} function.}
+                    number to be used can be specified using the \code{outcomeType} parameter in the
+                    \code{\link{createIctpdAnalysis}} function.}
 }
 \description{
 Create exposure-outcome combinations.

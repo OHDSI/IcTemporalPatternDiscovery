@@ -8,26 +8,27 @@ createIctpdAnalysis(analysisId = 1, description = "", exposureType = NULL,
   outcomeType = NULL, getDbIctpdDataArgs, calculateStatisticsIcArgs)
 }
 \arguments{
-\item{analysisId}{A unique identifier that can later be used to identify the results of this analysis}
+\item{analysisId}{A unique identifier that can later be used to identify the
+results of this analysis}
 
 \item{description}{A short description of the analysis.}
 
 \item{exposureType}{If more than one exposure is provided for each exposureOutcome,
-this field should be used to select the specific exposure to
-use in this analysis.}
+this field should be used to select the specific exposure to use
+in this analysis.}
 
 \item{outcomeType}{If more than one outcome is provided for each exposureOutcome,
 this field should be used to select the specific outcome to use
 in this analysis.}
 
-\item{getDbIctpdDataArgs}{An object representing the arguments to be used when calling
-the \code{\link{getDbIctpdData}} function.}
+\item{getDbIctpdDataArgs}{An object representing the arguments to be used when calling the
+\code{\link{getDbIctpdData}} function.}
 
-\item{calculateStatisticsIcArgs}{An object representing the arguments to be used when calling
-                                     the \code{\link{calculateStatisticsIc}} function.}
+\item{calculateStatisticsIcArgs}{An object representing the arguments to be used when calling the
+                                   \code{\link{calculateStatisticsIc}} function.}
 }
 \description{
-\code{createIctpdAnalysis} generates an object specifying one set of analysis choices
-for the IC Temporal Pattern Discovery method.
+\code{createIctpdAnalysis} generates an object specifying one set of analysis choices for the IC
+Temporal Pattern Discovery method.
 }
 
