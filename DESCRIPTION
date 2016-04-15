@@ -5,12 +5,14 @@ Version: 1.0.1
 Date: 2015-11-25
 Author: Tomas Bergvall
 Maintainer: Tomas Bergvall <tomas.bergvall@who-umc.org>
-Description: Population-level estimation method that estimates risk by combining a self-controlled and cohort design.
+Description: Population-level estimation method that estimates risk by combining
+    a self-controlled and cohort design.
 Depends:
     DatabaseConnector
 Imports:
-    RJDBC, 
+    RJDBC,
     SqlRender,
     rjson,
     OhdsiRTools
 License: Apache License 2.0
+RoxygenNote: 5.0.1

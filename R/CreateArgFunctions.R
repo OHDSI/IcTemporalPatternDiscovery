@@ -5,21 +5,19 @@
 #' @details
 #' Create an object defining the parameter values.
 #'
-#' @param drugTypeConceptIdList        Which drug_type to use: generally only use 1 value (ex: 30d
-#'                                     era).
-#' @param conditionTypeConceptIdList   Which condition_type to use: generally only use 1 value (ex: 30d
-#'                                     era).
-#' @param controlPeriodStart           start of the control period - can be set between -99999 and 0,
+#' @param drugTypeConceptIdList        Which drug_type to use: generally only use 1 value (ex: 30dera).
+#' @param conditionTypeConceptIdList
+#' @param controlPeriodStart           start of the control period - can be set between -99999 and0,
 #'                                     default is -1080.
-#' @param controlPeriodEnd             end of the control period - can be set between -99999 and 0,
+#' @param controlPeriodEnd             end of the control period - can be set between -99999 and0,
 #'                                     default is -361.
-#' @param riskPeriodStart              start of the risk period - can be set between 0 and 99999,
-#'                                     default is 1.
-#' @param riskPeriodEnd                end of the risk period - can be set between 0 and 99999, default
+#' @param riskPeriodStart              start of the risk period - can be set between 0 and
+#'                                     99999,default is 1.
+#' @param riskPeriodEnd                end of the risk period - can be set between 0 and 99999,default
 #'                                     is 30.
-#' @param censor                       a flag indicating wether the method should censor the
-#'                                     observation period at the end of exposure or not. Available
-#'                                     input is 0 or 1 with default = 0.
+#' @param censor                       a flag indicating wether the method should censor theobservation
+#'                                     period at the end of exposure or not. Availableinput is 0 or 1
+#'                                     with default = 0.
 #'
 #' @export
 createGetDbIctpdDataArgs <- function(drugTypeConceptIdList = c(38000182),
@@ -29,7 +27,18 @@ createGetDbIctpdDataArgs <- function(drugTypeConceptIdList = c(38000182),
                                      riskPeriodStart = 1,
                                      riskPeriodEnd = 30,
                                      censor = FALSE) {
-  analysis <- OhdsiRTools::convertArgsToList(match.call(), "args")
+  # First: get default values:
+  analysis <- list()
+  for (name in names(formals(createGetDbIctpdDataArgs))) {
+    analysis[[name]] <- get(name)
+  }
+  # Second: overwrite defaults with actual values:
+  values <- lapply(as.list(match.call())[-1], function(x) eval(x, envir = sys.frame(-3)))
+  for (name in names(values)) {
+    if (name %in% names(analysis))
+      analysis[[name]] <- values[[name]]
+  }
+  class(analysis) <- "args"
   return(analysis)
 }
 
@@ -38,19 +47,20 @@ createGetDbIctpdDataArgs <- function(drugTypeConceptIdList = c(38000182),
 #' @details
 #' Create an object defining the parameter values.
 #'
-#' @param multipleControlPeriods   Defines the control periods to use where 100 means the control
-#'                                 period defined by controlPeriodStart/End, 010 means the period -30
-#'                                 to -1 day before prescription and 001 means the control period on
-#'                                 the day of prescription
-#' @param multipleRiskPeriods      Defines the risk periods to use 10000 is 1-30 days, 01000 is 1 to
-#'                                 360 days, 00100 is 31 to 90 days, 00010 is 91 to 180 and 00001 is
-#'                                 721 to 1080 days after prescription default is '10000'
-#' @param shrinkage                Shrinkage used in IRR calculations, required >0 to deal with 0 case
-#'                                 counts, but larger number means more shrinkage. default is 0.5
-#' @param icPercentile             The lower bound of the credibility interval for the IC values
-#'                                 (IClow). default is 0.025,
-#' @param metric                   Defines wether the output will contain the point estimate or the
-#'                                 lower bound. Available input is 'IC and 'IC025' default is 'IC025'
+#' @param multipleControlPeriods   Defines the control periods to use where 100 means the controlperiod
+#'                                 defined by controlPeriodStart/End, 010 means the period -30to -1 day
+#'                                 before prescription and 001 means the control period onthe day of
+#'                                 prescription
+#' @param multipleRiskPeriods      Defines the risk periods to use 10000 is 1-30 days, 01000 is 1 to360
+#'                                 days, 00100 is 31 to 90 days, 00010 is 91 to 180 and 00001 is721 to
+#'                                 1080 days after prescription default is '10000'
+#' @param shrinkage                Shrinkage used in IRR calculations, required >0 to deal with 0
+#'                                 casecounts, but larger number means more shrinkage. default is 0.5
+#' @param icPercentile             The lower bound of the credibility interval for the IC
+#'                                 values(IClow). default is 0.025,
+#' @param metric                   Defines wether the output will contain the point estimate or
+#'                                 thelower bound. Available input is 'IC and 'IC025' default is
+#'                                 'IC025'
 #'
 #' @export
 createCalculateStatisticsIcArgs <- function(multipleControlPeriods = "110",
@@ -58,6 +68,17 @@ createCalculateStatisticsIcArgs <- function(multipleControlPeriods = "110",
                                             shrinkage = 0.5,
                                             icPercentile = 0.025,
                                             metric = "IC025") {
-  analysis <- OhdsiRTools::convertArgsToList(match.call(), "args")
+  # First: get default values:
+  analysis <- list()
+  for (name in names(formals(createCalculateStatisticsIcArgs))) {
+    analysis[[name]] <- get(name)
+  }
+  # Second: overwrite defaults with actual values:
+  values <- lapply(as.list(match.call())[-1], function(x) eval(x, envir = sys.frame(-3)))
+  for (name in names(values)) {
+    if (name %in% names(analysis))
+      analysis[[name]] <- values[[name]]
+  }
+  class(analysis) <- "args"
   return(analysis)
 }
