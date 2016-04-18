@@ -43,8 +43,22 @@ createIctpdAnalysis <- function(analysisId = 1,
                                 outcomeType = NULL,
                                 getDbIctpdDataArgs,
                                 calculateStatisticsIcArgs) {
-  ictpdAnalysis <- OhdsiRTools::convertArgsToList(match.call(), "ictpdAnalysis")
-  return(ictpdAnalysis)
+  # First: get the default values:
+  analysis <- list()
+  for (name in names(formals(createIctpdAnalysis))) {
+    analysis[[name]] <- get(name)
+  }
+  
+  # Next: overwrite defaults with actual values if specified:
+  values <- lapply(as.list(match.call())[-1], function(x) eval(x, envir = sys.frame(-3)))
+  for (name in names(values)) {
+    if (name %in% names(analysis)) {
+      analysis[[name]] <- values[[name]]
+    }
+  }
+  
+  class(analysis) <- "ictpdAnalysis"
+  return(analysis)
 }
 
 #' Save a list of ictpdAnalysis to file
@@ -107,7 +121,10 @@ loadIctpdAnalysisList <- function(file) {
 #'
 #' @export
 createExposureOutcome <- function(exposureId, outcomeId) {
-  exposureOutcome <- OhdsiRTools::convertArgsToList(match.call(), "exposureOutcome")
+  
+  exposureOutcome <- data.frame(exposureId = exposureId,
+                                outcomeId = outcomeId)
+  class(exposureOutcome) <- "exposureOutcome"
   return(exposureOutcome)
 }
 
