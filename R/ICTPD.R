@@ -475,14 +475,14 @@ calculateStatisticsIc <- function(ictpdData,
         }
     }
     # Add some standard metrics that are computed by all OHDSI methods (not very meaningful for ICTPD):
-    comb$logRr <- comb$IC
-    comb$seLogRr <- (comb$IC_high - comb$IC)/qnorm(1 - icPercentile)
-
+    comb$LOG_RR <- comb$IC
+    comb$SE_LOG_RR <- (comb$IC_high - comb$IC)/qnorm(1 - icPercentile)
     if (toupper(metric) == "IC") {
         comb$estimate <- comb$IC
     } else {
         comb$estimate <- comb$IC_low
     }
+    colnames(comb) <- SqlRender::snakeCaseToCamelCase(colnames(comb))
     ictpdData$metaData$call <- list(ictpdData$metaData$call, match.call())
     result <- list(results = comb, metaData = ictpdData$metaData, metric = metric)
     class(result) <- "ictpdResults"

@@ -191,12 +191,12 @@ runIctpdAnalyses <- function(connectionDetails,
 }
 
 .createIctpdDataFileName <- function(folder, loadingArgsId) {
-  name <- paste("SccResults_l", loadingArgsId, ".rds", sep = "")
+  name <- paste("IctpdData_l", loadingArgsId, ".rds", sep = "")
   return(file.path(folder, name))
 }
 
 .createIctpdResultsFileName <- function(folder, analysisId) {
-  name <- paste("SccResults_a", analysisId, ".rds", sep = "")
+  name <- paste("IctpdResults_a", analysisId, ".rds", sep = "")
   return(file.path(folder, name))
 }
 
