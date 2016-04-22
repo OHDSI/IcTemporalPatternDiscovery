@@ -12,7 +12,6 @@ Depends:
 Imports:
     RJDBC,
     SqlRender,
-    rjson,
-    OhdsiRTools
+    OhdsiRTools (>= 1.1.1)
 License: Apache License 2.0
 RoxygenNote: 5.0.1

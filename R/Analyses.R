@@ -76,7 +76,7 @@ saveIctpdAnalysisList <- function(ictpdAnalysisList, file) {
   for (i in 1:length(ictpdAnalysisList)) {
     stopifnot(class(ictpdAnalysisList[[i]]) == "ictpdAnalysis")
   }
-  write(rjson::toJSON(ictpdAnalysisList), file)
+  OhdsiRTools::saveSettingsToJson(ictpdAnalysisList, file)
 }
 
 #' Load a list of ictpdAnalysis from file
@@ -91,16 +91,7 @@ saveIctpdAnalysisList <- function(ictpdAnalysisList, file) {
 #'
 #' @export
 loadIctpdAnalysisList <- function(file) {
-  ictpdAnalysisList <- rjson::fromJSON(file = file)
-  for (i in 1:length(ictpdAnalysisList)) {
-    class(ictpdAnalysisList[[i]]) <- "ictpdAnalysis"
-    for (j in 1:length(ictpdAnalysisList[[i]])) {
-      if (is.list(ictpdAnalysisList[[i]][[j]])) {
-        class(ictpdAnalysisList[[i]][[j]]) <- "args"
-      }
-    }
-  }
-  return(ictpdAnalysisList)
+  return(OhdsiRTools::loadSettingsFromJson(file))
 }
 
 #' Create exposure-outcome combinations.
@@ -143,7 +134,7 @@ saveExposureOutcomeList <- function(exposureOutcomeList, file) {
   for (i in 1:length(exposureOutcomeList)) {
     stopifnot(class(exposureOutcomeList[[i]]) == "exposureOutcome")
   }
-  write(rjson::toJSON(exposureOutcomeList), file)
+  OhdsiRTools::saveSettingsToJson(exposureOutcomeList, file)
 }
 
 #' Load a list of exposureOutcome from file
@@ -158,10 +149,6 @@ saveExposureOutcomeList <- function(exposureOutcomeList, file) {
 #'
 #' @export
 loadExposureOutcomeList <- function(file) {
-  exposureOutcomeList <- rjson::fromJSON(file = file)
-  for (i in 1:length(exposureOutcomeList)) {
-    class(exposureOutcomeList[[i]]) <- "exposureOutcome"
-  }
-  return(exposureOutcomeList)
+  return(OhdsiRTools::loadSettingsFromJson(file))
 }
 
