@@ -1,4 +1,5 @@
 #!/bin/bash
+
 set -o errexit -o nounset
 addToDrat(){
   PKG_REPO=$PWD
