@@ -5,3 +5,4 @@
 extras
 ^\.git
 man-roxygen
+deploy.sh

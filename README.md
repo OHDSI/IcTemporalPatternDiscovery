@@ -77,7 +77,7 @@ Development
 ===========
 IcTemporalPatternDiscovery is being developed in R Studio.
 
-###Development status
+### Development status
 
 Alpha
 
