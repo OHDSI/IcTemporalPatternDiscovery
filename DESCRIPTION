@@ -1,17 +1,16 @@
 Package: IcTemporalPatternDiscovery
 Type: Package
 Title: IC Temporal Pattern Discovery
-Version: 1.0.1
-Date: 2015-11-25
+Version: 1.0.2
+Date: 2017-07-05
 Author: Tomas Bergvall
 Maintainer: Tomas Bergvall <tomas.bergvall@who-umc.org>
 Description: Population-level estimation method that estimates risk by combining
     a self-controlled and cohort design.
 Depends:
-    DatabaseConnector
+    DatabaseConnector (>= 1.11.4),
 Imports:
-    RJDBC,
     SqlRender,
     OhdsiRTools (>= 1.1.1)
 License: Apache License 2.0
-RoxygenNote: 5.0.1
+RoxygenNote: 6.0.1

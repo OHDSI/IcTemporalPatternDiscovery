@@ -12,6 +12,9 @@ createGetDbIctpdDataArgs(drugTypeConceptIdList = c(38000182),
 \arguments{
 \item{drugTypeConceptIdList}{Which drug_type to use: generally only use 1 value (ex: 30dera).}
 
+\item{conditionTypeConceptIdList}{Which condition_type to use: generally only use 1 value (ex:
+30dera).}
+
 \item{controlPeriodStart}{start of the control period - can be set between -99999 and0,
 default is -1080.}
 
@@ -34,4 +37,3 @@ Create a parameter object for the function getDbIctpdData
 \details{
 Create an object defining the parameter values.
 }
-

@@ -6,7 +6,8 @@
 #' Create an object defining the parameter values.
 #'
 #' @param drugTypeConceptIdList        Which drug_type to use: generally only use 1 value (ex: 30dera).
-#' @param conditionTypeConceptIdList
+#' @param conditionTypeConceptIdList   Which condition_type to use: generally only use 1 value (ex:
+#'                                     30dera).
 #' @param controlPeriodStart           start of the control period - can be set between -99999 and0,
 #'                                     default is -1080.
 #' @param controlPeriodEnd             end of the control period - can be set between -99999 and0,

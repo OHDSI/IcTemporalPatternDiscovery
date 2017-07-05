@@ -33,6 +33,9 @@ lower bound. Available input is 'IC and 'IC025' default is 'IC025'}
 \value{
 An object of type \code{ictpdResults} containing the results.
 }
+\description{
+Computes the IC statistics.
+}
 \examples{
 \dontrun{
 library(SelfControlledCohort)
@@ -50,4 +53,3 @@ ictpdResults <- calculateStatisticsIC(ictpdData)
 ictpdResults
 }
 }
-

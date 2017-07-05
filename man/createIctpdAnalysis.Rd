@@ -31,4 +31,3 @@ in this analysis.}
 \code{createIctpdAnalysis} generates an object specifying one set of analysis choices for the IC
 Temporal Pattern Discovery method.
 }
-

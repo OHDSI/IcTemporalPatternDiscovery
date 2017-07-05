@@ -1,6 +1,6 @@
 # @file ICTPD.R
 #
-# Copyright 2016 Observational Health Data Sciences and Informatics
+# Copyright 2017 Observational Health Data Sciences and Informatics
 #
 # This file is part of IcTemporalPatternDiscovery
 #
@@ -23,8 +23,8 @@
 #'
 #' @docType package
 #' @name ICTemporalPatternDiscovery
-#' @importFrom RJDBC dbDisconnect
 #' @import DatabaseConnector
+#' @importFrom stats aggregate printCoefmat qgamma qnorm
 NULL
 
 #' @title
@@ -73,7 +73,7 @@ NULL
 #'                                          COHORT_END_DATE.
 #' @param drugTypeConceptIdList             Which drug_type to use: generally only use 1 value (ex: 30d
 #'                                          era).
-#' @param conditionTypeConceptIdListWhich   condition_type to use: generally only use 1 value (ex: 30d
+#' @param conditionTypeConceptIdList        Which condition_type to use: generally only use 1 value (ex: 30d
 #'                                          era).
 #' @param riskPeriodStart                   start of the risk period - can be set between 0 and 99999,
 #'                                          default is 1.
@@ -159,7 +159,7 @@ getDbIctpdData <- function(connectionDetails,
 
     # Check if connection already open:
     if (is.null(connectionDetails$conn)) {
-        conn <- connect(connectionDetails)
+        conn <- DatabaseConnector::connect(connectionDetails)
     } else {
         conn <- connectionDetails$conn
     }
@@ -208,7 +208,7 @@ getDbIctpdData <- function(connectionDetails,
                                                      censor = censor)
 
     writeLines(paste("Computing counts. This could take a while", sep = ""))
-    executeSql(conn, renderedSql)
+    DatabaseConnector::executeSql(conn, renderedSql)
     sql <- c(sql, renderedSql)
 
     renderedSql <- SqlRender::loadRenderTranslateSql(sqlFilename = "GetStatisticsData.sql",
@@ -218,7 +218,7 @@ getDbIctpdData <- function(connectionDetails,
                                                      exposureConceptId = exposureConceptId,
                                                      outcomeConceptId = outcomeConceptId)
     writeLines("Retrieving counts from server")
-    counts <- querySql(conn, renderedSql)
+    counts <- DatabaseConnector::querySql(conn, renderedSql)
     names(counts) <- toupper(names(counts))
     sql <- c(sql, renderedSql)
 
@@ -226,12 +226,12 @@ getDbIctpdData <- function(connectionDetails,
     renderedSql <- SqlRender::loadRenderTranslateSql(sqlFilename = "DropTables.sql",
                                                      packageName = "IcTemporalPatternDiscovery",
                                                      dbms = connectionDetails$dbms)
-    executeSql(conn, renderedSql, progressBar = FALSE, reportOverallTime = FALSE)
+    DatabaseConnector::executeSql(conn, renderedSql, progressBar = FALSE, reportOverallTime = FALSE)
     sql <- c(sql, renderedSql)
 
     # Close connection if it was openend in this function:
     if (is.null(connectionDetails$conn)) {
-        RJDBC::dbDisconnect(conn)
+        DatabaseConnector::disconnect(conn)
     }
 
     metaData <- list(sql = sql, exposureOutcomePairs = exposureOutcomePairs, call = match.call())
@@ -267,6 +267,8 @@ ic <- function(obs, exp, shape.add = 0.5, rate.add = 0.5, percentile = 0.025) {
 #' @param multipleRiskPeriods      Defines the risk periods to use 10000 is 1-30 days, 01000 is 1 to
 #'                                 360 days, 00100 is 31 to 90 days, 00010 is 91 to 180 and 00001 is
 #'                                 721 to 1080 days after prescription default is '10000'
+#' @description 
+#' Computes the IC statistics.
 #'
 #' @return
 #' An object of type \code{ictpdResults} containing the results.

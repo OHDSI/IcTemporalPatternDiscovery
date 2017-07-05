@@ -15,4 +15,3 @@ A list of objects of type \code{ictpdAnalysis}.
 \description{
 Load a list of objects of type \code{ictpdAnalysis} from file. The file is in JSON format.
 }
-

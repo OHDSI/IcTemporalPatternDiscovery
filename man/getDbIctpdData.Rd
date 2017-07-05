@@ -62,6 +62,9 @@ COHORT_END_DATE.}
 \item{drugTypeConceptIdList}{Which drug_type to use: generally only use 1 value (ex: 30d
 era).}
 
+\item{conditionTypeConceptIdList}{Which condition_type to use: generally only use 1 value (ex: 30d
+era).}
+
 \item{controlPeriodStart}{start of the control period - can be set between -99999 and
 0, default is -1080.}
 
@@ -77,9 +80,6 @@ default is 30.}
 \item{censor}{a flag indicating wether the method should censor the
 observation period at the end of exposure or not. Available
 input is 0 or 1 with default = 0.}
-
-\item{conditionTypeConceptIdListWhich}{condition_type to use: generally only use 1 value (ex: 30d
-era).}
 }
 \value{
 An object of type \code{ictpdData} containing counts that can be used in the
@@ -106,4 +106,3 @@ ictpdResults <- calculateStatisticsIC(ictpdData)
 ictpdResults
 }
 }
-

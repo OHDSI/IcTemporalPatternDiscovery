@@ -4,3 +4,4 @@
 ^\.travis\.yml$
 extras
 ^\.git
+man-roxygen
