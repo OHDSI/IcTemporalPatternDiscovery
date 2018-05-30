@@ -5,11 +5,10 @@
 \title{Get ICTPD counts from database}
 \usage{
 getDbIctpdData(connectionDetails, cdmDatabaseSchema,
-  oracleTempSchema = cdmDatabaseSchema, cdmVersion = "4",
+  oracleTempSchema = cdmDatabaseSchema, cdmVersion = "5",
   exposureOutcomePairs, exposureDatabaseSchema = cdmDatabaseSchema,
   exposureTable = "drug_era", outcomeDatabaseSchema = cdmDatabaseSchema,
-  outcomeTable = "condition_era", drugTypeConceptIdList = c(38000182),
-  conditionTypeConceptIdList = c(38000247), controlPeriodStart = -1080,
+  outcomeTable = "condition_era", controlPeriodStart = -1080,
   controlPeriodEnd = -361, riskPeriodStart = 1, riskPeriodEnd = 30,
   censor = FALSE)
 }
@@ -25,8 +24,7 @@ vocabulary.}
 want all temporary tables to be managed. Requires
 create/insert permissions to this database.}
 
-\item{cdmVersion}{Define the OMOP CDM version used: currently support "4" and
-"5".}
+\item{cdmVersion}{Define the OMOP CDM version used: currently supports "5".}
 
 \item{exposureOutcomePairs}{A data frame with at least two columns:
 \itemize{
@@ -58,12 +56,6 @@ outcomeTable <> CONDITION_OCCURRENCE, then expectation is
 outcomeTable has format of COHORT table:
 COHORT_DEFINITION_ID, SUBJECT_ID, COHORT_START_DATE,
 COHORT_END_DATE.}
-
-\item{drugTypeConceptIdList}{Which drug_type to use: generally only use 1 value (ex: 30d
-era).}
-
-\item{conditionTypeConceptIdList}{Which condition_type to use: generally only use 1 value (ex: 30d
-era).}
 
 \item{controlPeriodStart}{start of the control period - can be set between -99999 and
 0, default is -1080.}

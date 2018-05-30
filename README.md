@@ -9,7 +9,8 @@ This R package is an implementation of the IC Temporal Pattern Discovery method 
 Features
 ========
 - Extracts the necessary data from a database in OMOP Common Data Model format.
-- Supports various risk and control window definitions
+- Supports various risk and control window definitions.
+- Create Chronographs to explore time-to-event relationships.
 
 Example
 =======
@@ -58,8 +59,6 @@ Getting Started
   install.packages("devtools")
   library(devtools)
   install_github("ohdsi/OhdsiRTools") 
-  install_github("ohdsi/SqlRender") 
-  install_github("ohdsi/DatabaseConnector") 
   install_github("ohdsi/IcTemporalPatternDiscovery") 
   ```
 

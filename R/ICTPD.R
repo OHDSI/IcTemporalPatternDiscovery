@@ -1,6 +1,6 @@
 # @file ICTPD.R
 #
-# Copyright 2017 Observational Health Data Sciences and Informatics
+# Copyright 2018 Observational Health Data Sciences and Informatics
 #
 # This file is part of IcTemporalPatternDiscovery
 #
@@ -42,8 +42,7 @@ NULL
 #' @param oracleTempSchema                  For Oracle only: the name of the database schema where you
 #'                                          want all temporary tables to be managed. Requires
 #'                                          create/insert permissions to this database.
-#' @param cdmVersion                        Define the OMOP CDM version used: currently support "4" and
-#'                                          "5".
+#' @param cdmVersion                        Define the OMOP CDM version used: currently supports "5".
 #' @param exposureOutcomePairs              A data frame with at least two columns:
 #'                                          \itemize{
 #'                                            \item {"exposureId" containing the drug_concept_ID or
@@ -71,10 +70,6 @@ NULL
 #'                                          outcomeTable has format of COHORT table:
 #'                                          COHORT_DEFINITION_ID, SUBJECT_ID, COHORT_START_DATE,
 #'                                          COHORT_END_DATE.
-#' @param drugTypeConceptIdList             Which drug_type to use: generally only use 1 value (ex: 30d
-#'                                          era).
-#' @param conditionTypeConceptIdList        Which condition_type to use: generally only use 1 value (ex: 30d
-#'                                          era).
 #' @param riskPeriodStart                   start of the risk period - can be set between 0 and 99999,
 #'                                          default is 1.
 #' @param riskPeriodEnd                     end of the risk period - can be set between 0 and 99999,
@@ -97,14 +92,12 @@ NULL
 getDbIctpdData <- function(connectionDetails,
                            cdmDatabaseSchema,
                            oracleTempSchema = cdmDatabaseSchema,
-                           cdmVersion = "4",
+                           cdmVersion = "5",
                            exposureOutcomePairs,
                            exposureDatabaseSchema = cdmDatabaseSchema,
                            exposureTable = "drug_era",
                            outcomeDatabaseSchema = cdmDatabaseSchema,
                            outcomeTable = "condition_era",
-                           drugTypeConceptIdList = c(38000182),
-                           conditionTypeConceptIdList = c(38000247),
                            controlPeriodStart = -1080,
                            controlPeriodEnd = -361,
                            riskPeriodStart = 1,
@@ -126,11 +119,7 @@ getDbIctpdData <- function(connectionDetails,
     } else {
         exposureStartDate <- "cohort_start_date"
         exposureEndDate <- "cohort_end_date"
-        if (cdmVersion == "4") {
-            exposureConceptId <- "cohort_concept_id"
-        } else {
-            exposureConceptId <- "cohort_definition_id"
-        }
+        exposureConceptId <- "cohort_definition_id"
         exposurePersonId <- "subject_id"
     }
 
@@ -147,19 +136,14 @@ getDbIctpdData <- function(connectionDetails,
     } else {
         outcomeStartDate <- "cohort_start_date"
         outcomeEndDate <- "cohort_end_date"
-        if (cdmVersion == "4") {
-            outcomeConceptId <- "cohort_concept_id"
-        } else {
-            outcomeConceptId <- "cohort_definition_id"
-        }
+        outcomeConceptId <- "cohort_definition_id"
         outcomePersonId <- "subject_id"
     }
-
-    cdmDatabase <- strsplit(cdmDatabaseSchema, "\\.")[[1]][1]
 
     # Check if connection already open:
     if (is.null(connectionDetails$conn)) {
         conn <- DatabaseConnector::connect(connectionDetails)
+        on.exit(DatabaseConnector::disconnect(conn))
     } else {
         conn <- connectionDetails$conn
     }
@@ -185,10 +169,7 @@ getDbIctpdData <- function(connectionDetails,
                                                      packageName = "IcTemporalPatternDiscovery",
                                                      dbms = connectionDetails$dbms,
                                                      oracleTempSchema = oracleTempSchema,
-                                                     cdmDatabase = cdmDatabase,
-                                                     cdm_version = cdmVersion,
-                                                     drugTypeConceptIdList = drugTypeConceptIdList,
-                                                     conditionTypeConceptIdList = conditionTypeConceptIdList,
+                                                     cdmDatabaseSchema = cdmDatabaseSchema,
                                                      riskPeriodStart = riskPeriodStart,
                                                      riskPeriodEnd = riskPeriodEnd,
                                                      controlPeriodStart = controlPeriodStart,
@@ -223,16 +204,11 @@ getDbIctpdData <- function(connectionDetails,
     sql <- c(sql, renderedSql)
 
     # Drop tables used in computation:
-    renderedSql <- SqlRender::loadRenderTranslateSql(sqlFilename = "DropTables.sql",
+    renderedSql <- SqlRender::loadRenderTranslateSql(sqlFilename = "DropIctpdTables.sql",
                                                      packageName = "IcTemporalPatternDiscovery",
                                                      dbms = connectionDetails$dbms)
     DatabaseConnector::executeSql(conn, renderedSql, progressBar = FALSE, reportOverallTime = FALSE)
     sql <- c(sql, renderedSql)
-
-    # Close connection if it was openend in this function:
-    if (is.null(connectionDetails$conn)) {
-        DatabaseConnector::disconnect(conn)
-    }
 
     metaData <- list(sql = sql, exposureOutcomePairs = exposureOutcomePairs, call = match.call())
     result <- list(counts = counts, metaData = metaData)
