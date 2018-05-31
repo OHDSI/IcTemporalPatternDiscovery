@@ -45,7 +45,7 @@ SELECT
       cx_observed_721_1080,
       cy_observed_721_1080,
       c_observed_721_1080
-FROM #BASE_LINE_COUNTER_CXY TXY
+FROM #BASE_LINE_CNTER_CXY TXY
 JOIN #BASE_LINE_COUNTER_CX   TX ON TXY.@exposureConceptId = TX.@exposureConceptId  
 JOIN #BASE_LINE_COUNTER_CY   TY ON  TXY.@outcomeConceptId  = TY.@outcomeConceptId  
 CROSS JOIN #BASE_LINE_COUNTER_C     T

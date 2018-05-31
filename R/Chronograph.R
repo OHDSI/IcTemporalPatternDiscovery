@@ -123,6 +123,7 @@ getChronographData <- function(connectionDetails,
   conn <- DatabaseConnector::connect(connectionDetails)
   on.exit(DatabaseConnector::disconnect(conn))
   
+  OhdsiRTools::logTrace("Inserting tables of IDs")
   DatabaseConnector::insertTable(connection = conn,
                                  tableName = "#period",
                                  data = periodsForDb,

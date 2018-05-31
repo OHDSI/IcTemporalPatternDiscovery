@@ -152,6 +152,7 @@ getDbIctpdData <- function(connectionDetails,
     exposures <- data.frame(type = 1, id = unique(exposureOutcomePairs$exposureId))
     outcomes <- data.frame(type = 2, id = unique(exposureOutcomePairs$outcomeId))
     conceptsOfInterest <- rbind(exposures, outcomes)
+    OhdsiRTools::logTrace("Inserting tables of IDs")
     DatabaseConnector::insertTable(conn,
                                    "#concepts_of_interest",
                                    conceptsOfInterest,
@@ -189,7 +190,7 @@ getDbIctpdData <- function(connectionDetails,
                                                      outcomePersonId = outcomePersonId,
                                                      censor = censor)
 
-    writeLines(paste("Computing counts. This could take a while", sep = ""))
+    OhdsiRTools::logInfo("Computing counts. This could take a while")
     DatabaseConnector::executeSql(conn, renderedSql)
     sql <- c(sql, renderedSql)
 
@@ -199,7 +200,7 @@ getDbIctpdData <- function(connectionDetails,
                                                      oracleTempSchema = oracleTempSchema,
                                                      exposureConceptId = exposureConceptId,
                                                      outcomeConceptId = outcomeConceptId)
-    writeLines("Retrieving counts from server")
+    OhdsiRTools::logInfo("Retrieving counts from server")
     counts <- DatabaseConnector::querySql(conn, renderedSql)
     names(counts) <- toupper(names(counts))
     sql <- c(sql, renderedSql)
@@ -215,7 +216,7 @@ getDbIctpdData <- function(connectionDetails,
     result <- list(counts = counts, metaData = metaData)
     class(result) <- "ictpdData"
     delta <- Sys.time() - start
-    writeLines(paste("Loading took", signif(delta, 3), attr(delta, "units")))
+    OhdsiRTools::logInfo(paste("Loading took", signif(delta, 3), attr(delta, "units")))
     return(result)
 }
 
@@ -470,7 +471,7 @@ calculateStatisticsIc <- function(ictpdData,
 
 #' @export
 print.ictpdResults <- function(x, ...) {
-    output <- with(x, subset(x$results, select = c(EXPOSUREOFINTEREST, OUTCOMEOFINTEREST, estimate)))
+    output <- with(x, subset(x$results, select = c(exposureofinterest, outcomeofinterest, estimate)))
     colnames(output) <- c("Exposure concept ID", "Outcome concept ID", x$metric)
     printCoefmat(output)
 }
@@ -479,5 +480,3 @@ print.ictpdResults <- function(x, ...) {
 summary.ictpdResults <- function(object, ...) {
     object$results
 }
-
-

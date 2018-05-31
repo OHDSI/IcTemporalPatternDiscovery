@@ -35,8 +35,8 @@ IF OBJECT_ID('tempdb..#BASE_LINE_COUNTER_CY', 'U') IS NOT NULL
 IF OBJECT_ID('tempdb..#BASE_LINE_COUNTER_CX', 'U') IS NOT NULL
 	DROP TABLE #BASE_LINE_COUNTER_CX;
 	
-IF OBJECT_ID('tempdb..#BASE_LINE_COUNTER_CXY', 'U') IS NOT NULL
-	DROP TABLE #BASE_LINE_COUNTER_CXY;
+IF OBJECT_ID('tempdb..#BASE_LINE_CNTER_CXY', 'U') IS NOT NULL
+	DROP TABLE #BASE_LINE_CNTER_CXY;
 	
 /*****************
 PERSON_OPT
@@ -133,7 +133,7 @@ SELECT DE.@exposureConceptId, CE.@outcomeConceptId,
   COUNT(DISTINCT CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, CE.@outcomeStartDate) between 31 AND 90 {@censor} ? {AND CE.@outcomeStartDate < DE.@exposureEndDate} : {}     THEN CAST(DE.@exposureStartDate AS VARCHAR) + '_' + CAST(DE.@exposureConceptId AS VARCHAR) ELSE NULL END) AS cxy_observed_31_90,
   COUNT(DISTINCT CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, CE.@outcomeStartDate) between 91 AND 180 {@censor} ? {AND CE.@outcomeStartDate < DE.@exposureEndDate} : {}    THEN CAST(DE.@exposureStartDate AS VARCHAR) + '_' + CAST(DE.@exposureConceptId AS VARCHAR) ELSE NULL END) AS cxy_observed_91_180,
   COUNT(DISTINCT CASE WHEN DATEDIFF(dd, DE.@exposureStartDate, CE.@outcomeStartDate) between 721 AND 1080 {@censor} ? {AND CE.@outcomeStartDate < DE.@exposureEndDate} : {}  THEN CAST(DE.@exposureStartDate AS VARCHAR) + '_' + CAST(DE.@exposureConceptId AS VARCHAR) ELSE NULL END) AS cxy_observed_721_1080
-INTO #BASE_LINE_COUNTER_CXY
+INTO #BASE_LINE_CNTER_CXY
 FROM @outcomeDatabaseSchema.@outcomeTable       CE
 JOIN @exposureDatabaseSchema.@exposureTable     DE  ON CE.@outcomePersonId = DE.@exposurePersonId
 JOIN #PERSON_OPT                        PA  ON DE.@exposurePersonId = PA.person_id
