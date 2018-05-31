@@ -119,10 +119,10 @@ getChronographData <- function(connectionDetails,
                         periodId = 1:numberOfPeriods - numberOfPeriods/2 - 1)
   periodsForDb <- periods
   colnames(periodsForDb) <- SqlRender::camelCaseToSnakeCase(colnames(periodsForDb))
-
+  
   conn <- DatabaseConnector::connect(connectionDetails)
   on.exit(DatabaseConnector::disconnect(conn))
-
+  
   DatabaseConnector::insertTable(connection = conn,
                                  tableName = "#period",
                                  data = periodsForDb,
@@ -142,7 +142,7 @@ getChronographData <- function(connectionDetails,
                                    tempTable = TRUE,
                                    dropTableIfExists = TRUE)
   }
-
+  
   sql <- SqlRender::loadRenderTranslateSql(sqlFilename = "CreateChronographData.sql",
                                            packageName = "IcTemporalPatternDiscovery",
                                            dbms = connectionDetails$dbms,
@@ -163,7 +163,7 @@ getChronographData <- function(connectionDetails,
                                            has_pairs = hasPairs)
   OhdsiRTools::logInfo("Creating counts on server")
   DatabaseConnector::executeSql(conn, sql)
-
+  
   OhdsiRTools::logInfo("Loading data server")
   sql <- "SELECT exposure_id, period_id, observed_count FROM #observed"
   sql <- SqlRender::translateSql(sql,
@@ -171,35 +171,35 @@ getChronographData <- function(connectionDetails,
                                  oracleTempSchema = oracleTempSchema)$sql
   observed <- DatabaseConnector::querySql(conn, sql)
   colnames(observed) <- SqlRender::snakeCaseToCamelCase(colnames(observed))
-
+  
   sql <- "SELECT period_id, all_observed_count FROM #all_observed"
   sql <- SqlRender::translateSql(sql,
                                  targetDialect = connectionDetails$dbms,
                                  oracleTempSchema = oracleTempSchema)$sql
   observedAll <- DatabaseConnector::querySql(conn, sql)
   colnames(observedAll) <- SqlRender::snakeCaseToCamelCase(colnames(observedAll))
-
+  
   sql <- "SELECT exposure_id, outcome_id, period_id, outcome_count FROM #outcome"
   sql <- SqlRender::translateSql(sql,
                                  targetDialect = connectionDetails$dbms,
                                  oracleTempSchema = oracleTempSchema)$sql
   outcome <- DatabaseConnector::querySql(conn, sql)
   colnames(outcome) <- SqlRender::snakeCaseToCamelCase(colnames(outcome))
-
+  
   sql <- "SELECT outcome_id, period_id, all_outcome_count FROM #all_outcome"
   sql <- SqlRender::translateSql(sql,
                                  targetDialect = connectionDetails$dbms,
                                  oracleTempSchema = oracleTempSchema)$sql
   outcomeAll <- DatabaseConnector::querySql(conn, sql)
   colnames(outcomeAll) <- SqlRender::snakeCaseToCamelCase(colnames(outcomeAll))
-
+  
   sql <- SqlRender::loadRenderTranslateSql(sqlFilename = "DropChronographTables.sql",
                                            packageName = "IcTemporalPatternDiscovery",
                                            dbms = connectionDetails$dbms,
                                            oracleTempSchema = oracleTempSchema,
                                            has_pairs = hasPairs)
   DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
-
+  
   result <- merge(observedAll, observed)
   result <- merge(result, outcomeAll)
   result <- merge(outcome, result)
@@ -213,7 +213,7 @@ getChronographData <- function(connectionDetails,
   result$ic <- ic$ic
   result$icLow <- ic$ic_low
   result$icHigh <- ic$ic_high
-
+  
   delta <- Sys.time() - start
   OhdsiRTools::logInfo(paste("Getting data took", signif(delta, 3), attr(delta, "units")))
   return(result)
@@ -245,7 +245,7 @@ plotChronograph <- function(data, exposureId, outcomeId, title = NULL, fileName 
   negData <- data[data$periodId < 0, ]
   posData <- data[data$periodId > 0, ]
   zeroData <- data[data$periodId == 0, ]
-
+  
   if (max(data$icHigh) + 0.5 < 1) {
     yMax <- 1
   } else {
@@ -256,67 +256,68 @@ plotChronograph <- function(data, exposureId, outcomeId, title = NULL, fileName 
   } else {
     yMin <- max(data$icLow) - 1
   }
-  topPlot <- ggplot2::ggplot() +
-             ggplot2::geom_hline(yintercept = 0, color = "black", size = 0.2, linetype = 2) +
-             ggplot2::geom_errorbar(ggplot2::aes(x = periodId, ymax = icHigh, ymin = icLow),
-                                    color = "grey50",
-                                    size = 0.35,
-                                    data = negData) +
-             ggplot2::geom_errorbar(ggplot2::aes(x = periodId, ymax = icHigh, ymin = icLow),
-                                    color = "grey50",
-                                    size = 0.35,
-                                    data = posData) +
-             ggplot2::geom_line(ggplot2::aes(x = periodId, y = ic),
-                                color = rgb(0, 0, 0.8),
-                                size = 0.7,
-                                data = negData) +
-             ggplot2::geom_line(ggplot2::aes(x = periodId, y = ic),
-                                color = rgb(0, 0, 0.8),
-                                size = 0.7,
-                                data = posData) +
-             ggplot2::geom_point(ggplot2::aes(x = periodId, y = ic),
-                                 color = rgb(0, 0, 0.8),
-                                 size = 6,
-                                 shape = "*",
-                                 data = zeroData) +
-             ggplot2::scale_x_continuous(name = "Months relative to first prescription",
-                                         breaks = (-5:5) * 12) +
-             ggplot2::ylab("IC") +
-             ggplot2::coord_cartesian(ylim = c(yMin, yMax)) +
-             ggplot2::theme(axis.title.x = ggplot2::element_blank())
-
-  bottomPlot <- ggplot2::ggplot() +
-                ggplot2::geom_bar(ggplot2::aes(x = periodId, y = outcomeCount, fill = "Observed"),
-                                  stat = "identity",
-                                  color = "black",
-                                  size = 0.4,
-                                  width = 1,
-                                  data = data) +
-                ggplot2::geom_line(ggplot2::aes(x = periodId,
-                                                y = expectedCount,
-                                                color = "Expected"), size = 0.7, data = negData) +
-                ggplot2::geom_line(ggplot2::aes(x = periodId, y = expectedCount),
-                                   color = rgb(0, 0, 0.8),
-                                   size = 0.7,
-                                   data = posData) +
-                ggplot2::geom_point(ggplot2::aes(x = periodId, y = expectedCount),
-                                    color = rgb(0, 0, 0.8),
-                                    size = 6,
-                                    shape = "*",
-                                    data = zeroData) +
-                ggplot2::scale_x_continuous(name = "Months relative to first exposure",
-                                            breaks = (-5:5) * 12) +
-                ggplot2::scale_fill_manual(name = "", values = c(rgb(0.3, 0.7, 0.8, alpha = 0.5))) +
-                ggplot2::scale_color_manual(name = "", values = c(rgb(0, 0, 0.8))) +
-                ggplot2::ylab("Number of outcomes") +
-                ggplot2::theme(legend.justification = c(0, 1),
-                               legend.position = c(0.8, 0.9),
-                               legend.direction = "horizontal",
-                               legend.box = "vertical",
-                               legend.key.height = ggplot2::unit(0.4, units = "lines"),
-                               legend.key = ggplot2::element_rect(fill = "transparent", color = NA),
-                               legend.background = ggplot2::element_rect(fill = "white", color = "black", size = 0.2))
-
+  topPlot <- with(data, ggplot2::ggplot() +
+                    ggplot2::geom_hline(yintercept = 0, color = "black", size = 0.2, linetype = 2) +
+                    ggplot2::geom_errorbar(ggplot2::aes(x = periodId, ymax = icHigh, ymin = icLow),
+                                           color = "grey50",
+                                           size = 0.35,
+                                           data = negData) +
+                    ggplot2::geom_errorbar(ggplot2::aes(x = periodId, ymax = icHigh, ymin = icLow),
+                                           color = "grey50",
+                                           size = 0.35,
+                                           data = posData) +
+                    ggplot2::geom_line(ggplot2::aes(x = periodId, y = ic),
+                                       color = rgb(0, 0, 0.8),
+                                       size = 0.7,
+                                       data = negData) +
+                    ggplot2::geom_line(ggplot2::aes(x = periodId, y = ic),
+                                       color = rgb(0, 0, 0.8),
+                                       size = 0.7,
+                                       data = posData) +
+                    ggplot2::geom_point(ggplot2::aes(x = periodId, y = ic),
+                                        color = rgb(0, 0, 0.8),
+                                        size = 6,
+                                        shape = "*",
+                                        data = zeroData) +
+                    ggplot2::scale_x_continuous(name = "Months relative to first prescription",
+                                                breaks = (-5:5) * 12) +
+                    ggplot2::ylab("IC") +
+                    ggplot2::coord_cartesian(ylim = c(yMin, yMax)) +
+                    ggplot2::theme(axis.title.x = ggplot2::element_blank())
+  )
+  
+  bottomPlot <- with(data, ggplot2::ggplot() +
+                       ggplot2::geom_bar(ggplot2::aes(x = periodId, y = outcomeCount, fill = "Observed"),
+                                         stat = "identity",
+                                         color = "black",
+                                         size = 0.4,
+                                         width = 1,
+                                         data = data) +
+                       ggplot2::geom_line(ggplot2::aes(x = periodId,
+                                                       y = expectedCount,
+                                                       color = "Expected"), size = 0.7, data = negData) +
+                       ggplot2::geom_line(ggplot2::aes(x = periodId, y = expectedCount),
+                                          color = rgb(0, 0, 0.8),
+                                          size = 0.7,
+                                          data = posData) +
+                       ggplot2::geom_point(ggplot2::aes(x = periodId, y = expectedCount),
+                                           color = rgb(0, 0, 0.8),
+                                           size = 6,
+                                           shape = "*",
+                                           data = zeroData) +
+                       ggplot2::scale_x_continuous(name = "Months relative to first exposure",
+                                                   breaks = (-5:5) * 12) +
+                       ggplot2::scale_fill_manual(name = "", values = c(rgb(0.3, 0.7, 0.8, alpha = 0.5))) +
+                       ggplot2::scale_color_manual(name = "", values = c(rgb(0, 0, 0.8))) +
+                       ggplot2::ylab("Number of outcomes") +
+                       ggplot2::theme(legend.justification = c(0, 1),
+                                      legend.position = c(0.8, 0.9),
+                                      legend.direction = "horizontal",
+                                      legend.box = "vertical",
+                                      legend.key.height = ggplot2::unit(0.4, units = "lines"),
+                                      legend.key = ggplot2::element_rect(fill = "transparent", color = NA),
+                                      legend.background = ggplot2::element_rect(fill = "white", color = "black", size = 0.2))
+  )
   plots <- list(topPlot, bottomPlot)
   grobs <- widths <- list()
   for (i in 1:length(plots)) {
@@ -328,8 +329,8 @@ plotChronograph <- function(data, exposureId, outcomeId, title = NULL, fileName 
     grobs[[i]]$widths[2:5] <- as.list(maxwidth)
   }
   plot <- gridExtra::grid.arrange(grobs[[1]], grobs[[2]], top = grid::textGrob(title))
-
-
+  
+  
   if (!is.null(fileName))
     ggplot2::ggsave(fileName, plot, width = 7, height = 5, dpi = 400)
   return(plot)

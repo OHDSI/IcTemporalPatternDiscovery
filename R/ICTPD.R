@@ -25,6 +25,7 @@
 #' @name ICTemporalPatternDiscovery
 #' @import DatabaseConnector
 #' @importFrom stats aggregate printCoefmat qgamma qnorm
+#' @importFrom grDevices rgb
 NULL
 
 #' @title
@@ -469,7 +470,7 @@ calculateStatisticsIc <- function(ictpdData,
 
 #' @export
 print.ictpdResults <- function(x, ...) {
-    output <- subset(x$results, select = c(EXPOSUREOFINTEREST, OUTCOMEOFINTEREST, estimate))
+    output <- with(x, subset(x$results, select = c(EXPOSUREOFINTEREST, OUTCOMEOFINTEREST, estimate)))
     colnames(output) <- c("Exposure concept ID", "Outcome concept ID", x$metric)
     printCoefmat(output)
 }

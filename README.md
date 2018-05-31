@@ -78,7 +78,9 @@ IcTemporalPatternDiscovery is being developed in R Studio.
 
 ### Development status
 
-Alpha
+[![Build Status](https://travis-ci.org/OHDSI/IcTemporalPatternDiscovery.svg?branch=master)](https://travis-ci.org/OHDSI/IcTemporalPatternDiscovery)
+
+Beta
 
 
 # Acknowledgements
