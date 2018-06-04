@@ -138,7 +138,7 @@ getChronographData <- function(connectionDetails,
     hasPairs <- TRUE
     colnames(exposureOutcomePairs) <- SqlRender::camelCaseToSnakeCase(colnames(exposureOutcomePairs))
     DatabaseConnector::insertTable(conn,
-                                   "#exposure_outcome",
+                                   "#exposure_outcome_ids",
                                    exposureOutcomePairs,
                                    tempTable = TRUE,
                                    dropTableIfExists = TRUE)
@@ -166,33 +166,33 @@ getChronographData <- function(connectionDetails,
   DatabaseConnector::executeSql(conn, sql)
   
   OhdsiRTools::logInfo("Loading data server")
-  sql <- "SELECT exposure_id, period_id, observed_count FROM #observed"
+  sql <- "SELECT exposure_id, period_id, observed_count FROM #exposure"
   sql <- SqlRender::translateSql(sql,
                                  targetDialect = connectionDetails$dbms,
                                  oracleTempSchema = oracleTempSchema)$sql
-  observed <- DatabaseConnector::querySql(conn, sql)
-  colnames(observed) <- SqlRender::snakeCaseToCamelCase(colnames(observed))
+  exposure <- DatabaseConnector::querySql(conn, sql)
+  colnames(exposure) <- SqlRender::snakeCaseToCamelCase(colnames(exposure))
   
-  sql <- "SELECT period_id, all_observed_count FROM #all_observed"
+  sql <- "SELECT period_id, all_observed_count FROM #all"
   sql <- SqlRender::translateSql(sql,
                                  targetDialect = connectionDetails$dbms,
                                  oracleTempSchema = oracleTempSchema)$sql
-  observedAll <- DatabaseConnector::querySql(conn, sql)
-  colnames(observedAll) <- SqlRender::snakeCaseToCamelCase(colnames(observedAll))
+  all <- DatabaseConnector::querySql(conn, sql)
+  colnames(all) <- SqlRender::snakeCaseToCamelCase(colnames(all))
   
-  sql <- "SELECT exposure_id, outcome_id, period_id, outcome_count FROM #outcome"
+  sql <- "SELECT exposure_id, outcome_id, period_id, outcome_count FROM #exposure_outcome"
+  sql <- SqlRender::translateSql(sql,
+                                 targetDialect = connectionDetails$dbms,
+                                 oracleTempSchema = oracleTempSchema)$sql
+  exposureOutcome <- DatabaseConnector::querySql(conn, sql)
+  colnames(exposureOutcome) <- SqlRender::snakeCaseToCamelCase(colnames(exposureOutcome))
+  
+  sql <- "SELECT outcome_id, period_id, all_outcome_count FROM #outcome"
   sql <- SqlRender::translateSql(sql,
                                  targetDialect = connectionDetails$dbms,
                                  oracleTempSchema = oracleTempSchema)$sql
   outcome <- DatabaseConnector::querySql(conn, sql)
   colnames(outcome) <- SqlRender::snakeCaseToCamelCase(colnames(outcome))
-  
-  sql <- "SELECT outcome_id, period_id, all_outcome_count FROM #all_outcome"
-  sql <- SqlRender::translateSql(sql,
-                                 targetDialect = connectionDetails$dbms,
-                                 oracleTempSchema = oracleTempSchema)$sql
-  outcomeAll <- DatabaseConnector::querySql(conn, sql)
-  colnames(outcomeAll) <- SqlRender::snakeCaseToCamelCase(colnames(outcomeAll))
   
   sql <- SqlRender::loadRenderTranslateSql(sqlFilename = "DropChronographTables.sql",
                                            packageName = "IcTemporalPatternDiscovery",
@@ -201,9 +201,9 @@ getChronographData <- function(connectionDetails,
                                            has_pairs = hasPairs)
   DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
   
-  result <- merge(observedAll, observed)
-  result <- merge(result, outcomeAll)
-  result <- merge(outcome, result)
+  result <- merge(all, exposure)
+  result <- merge(result, outcome)
+  result <- merge(exposureOutcome, result)
   result$expectedCount <- result$observedCount * result$allOutcomeCount/result$allObservedCount
   ic <- ic(obs = result$outcomeCount,
            exp = result$expectedCount,
