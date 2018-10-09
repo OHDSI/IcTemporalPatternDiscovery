@@ -14,7 +14,7 @@ r_github_packages:
   - OHDSI/SqlRender
   - OHDSI/DatabaseConnectorJars
   - OHDSI/DatabaseConnector
-  - OHDSI/OhdsiRTools
+  - OHDSI/ParallelLogger
 
 before_script:
   - export PKG_NAME=$(Rscript -e 'cat(paste0(devtools::as.package(".")$package))')

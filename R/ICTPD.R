@@ -152,7 +152,7 @@ getDbIctpdData <- function(connectionDetails,
     exposures <- data.frame(type = 1, id = unique(exposureOutcomePairs$exposureId))
     outcomes <- data.frame(type = 2, id = unique(exposureOutcomePairs$outcomeId))
     conceptsOfInterest <- rbind(exposures, outcomes)
-    OhdsiRTools::logTrace("Inserting tables of IDs")
+    ParallelLogger::logTrace("Inserting tables of IDs")
     DatabaseConnector::insertTable(conn,
                                    "#concepts_of_interest",
                                    conceptsOfInterest,
@@ -190,7 +190,7 @@ getDbIctpdData <- function(connectionDetails,
                                                      outcomePersonId = outcomePersonId,
                                                      censor = censor)
 
-    OhdsiRTools::logInfo("Computing counts. This could take a while")
+    ParallelLogger::logInfo("Computing counts. This could take a while")
     DatabaseConnector::executeSql(conn, renderedSql)
     sql <- c(sql, renderedSql)
 
@@ -200,7 +200,7 @@ getDbIctpdData <- function(connectionDetails,
                                                      oracleTempSchema = oracleTempSchema,
                                                      exposureConceptId = exposureConceptId,
                                                      outcomeConceptId = outcomeConceptId)
-    OhdsiRTools::logInfo("Retrieving counts from server")
+    ParallelLogger::logInfo("Retrieving counts from server")
     counts <- DatabaseConnector::querySql(conn, renderedSql)
     names(counts) <- toupper(names(counts))
     sql <- c(sql, renderedSql)
@@ -216,7 +216,7 @@ getDbIctpdData <- function(connectionDetails,
     result <- list(counts = counts, metaData = metaData)
     class(result) <- "ictpdData"
     delta <- Sys.time() - start
-    OhdsiRTools::logInfo(paste("Loading took", signif(delta, 3), attr(delta, "units")))
+    ParallelLogger::logInfo(paste("Loading took", signif(delta, 3), attr(delta, "units")))
     return(result)
 }
 

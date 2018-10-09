@@ -45,7 +45,7 @@ Requires R (version 3.1.0 or higher). Libraries used in this package require Jav
 Dependencies
 ============
 
- * OhdsiRTools
+ * ParallelLogger
  * DatabaseConnector
  * SqlRender
 
@@ -58,7 +58,7 @@ Getting Started
   ```r
   install.packages("devtools")
   library(devtools)
-  install_github("ohdsi/OhdsiRTools") 
+  install_github("ohdsi/ParallelLogger") 
   install_github("ohdsi/IcTemporalPatternDiscovery") 
   ```
 

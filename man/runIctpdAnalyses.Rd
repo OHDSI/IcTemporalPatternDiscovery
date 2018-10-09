@@ -6,11 +6,12 @@
 \usage{
 runIctpdAnalyses(connectionDetails, cdmDatabaseSchema,
   oracleTempSchema = cdmDatabaseSchema,
-  exposureDatabaseSchema = cdmDatabaseSchema, exposureTable = "drug_era",
-  outcomeDatabaseSchema = cdmDatabaseSchema, outcomeTable = "condition_era",
-  cdmVersion = 4, outputFolder = "./IctpdOutput", ictpdAnalysisList,
-  exposureOutcomeList, getDbIctpdDataThreads = 1,
-  calculateStatisticsIcThreads = 1)
+  exposureDatabaseSchema = cdmDatabaseSchema,
+  exposureTable = "drug_era",
+  outcomeDatabaseSchema = cdmDatabaseSchema,
+  outcomeTable = "condition_era", cdmVersion = 4,
+  outputFolder = "./IctpdOutput", ictpdAnalysisList, exposureOutcomeList,
+  getDbIctpdDataThreads = 1, calculateStatisticsIcThreads = 1)
 }
 \arguments{
 \item{connectionDetails}{An R object of type \code{connectionDetails} created using the

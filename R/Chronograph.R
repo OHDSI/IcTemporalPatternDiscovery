@@ -123,7 +123,7 @@ getChronographData <- function(connectionDetails,
   conn <- DatabaseConnector::connect(connectionDetails)
   on.exit(DatabaseConnector::disconnect(conn))
   
-  OhdsiRTools::logTrace("Inserting tables of IDs")
+  ParallelLogger::logTrace("Inserting tables of IDs")
   DatabaseConnector::insertTable(connection = conn,
                                  tableName = "#period",
                                  data = periodsForDb,
@@ -162,10 +162,10 @@ getChronographData <- function(connectionDetails,
                                            exposure_ids = exposureIds,
                                            outcome_ids = outcomeIds,
                                            has_pairs = hasPairs)
-  OhdsiRTools::logInfo("Creating counts on server")
+  ParallelLogger::logInfo("Creating counts on server")
   DatabaseConnector::executeSql(conn, sql)
   
-  OhdsiRTools::logInfo("Loading data server")
+  ParallelLogger::logInfo("Loading data server")
   sql <- "SELECT exposure_id, period_id, observed_count FROM #exposure"
   sql <- SqlRender::translateSql(sql,
                                  targetDialect = connectionDetails$dbms,
@@ -216,7 +216,7 @@ getChronographData <- function(connectionDetails,
   result$icHigh <- ic$ic_high
   
   delta <- Sys.time() - start
-  OhdsiRTools::logInfo(paste("Getting data took", signif(delta, 3), attr(delta, "units")))
+  ParallelLogger::logInfo(paste("Getting data took", signif(delta, 3), attr(delta, "units")))
   return(result)
 }
 

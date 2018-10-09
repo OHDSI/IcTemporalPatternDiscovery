@@ -87,7 +87,7 @@ runIctpdAnalyses <- function(connectionDetails,
   for (ictpdAnalysis in ictpdAnalysisList) {
     stopifnot(class(ictpdAnalysis) == "ictpdAnalysis")
   }
-  uniqueAnalysisIds <- unlist(unique(OhdsiRTools::selectFromList(ictpdAnalysisList, "analysisId")))
+  uniqueAnalysisIds <- unlist(unique(ParallelLogger::selectFromList(ictpdAnalysisList, "analysisId")))
   if (length(uniqueAnalysisIds) != length(ictpdAnalysisList)) {
     stop("Duplicate analysis IDs are not allowed")
   }
@@ -96,7 +96,7 @@ runIctpdAnalyses <- function(connectionDetails,
 
   ### Create reference table ###
   resultsReference <- data.frame()
-  loadingArgsList <- unique(OhdsiRTools::selectFromList(ictpdAnalysisList, c("getDbIctpdDataArgs",
+  loadingArgsList <- unique(ParallelLogger::selectFromList(ictpdAnalysisList, c("getDbIctpdDataArgs",
                                                                              "exposureType",
                                                                              "outcomeType")))
   for (i in 1:length(loadingArgsList)) {
@@ -105,7 +105,7 @@ runIctpdAnalyses <- function(connectionDetails,
     for (exposureOutcome in exposureOutcomeList) {
       exposureId <- .selectByType(loadingArgs$exposureType, exposureOutcome$exposureId, "exposure")
       outcomeId <- .selectByType(loadingArgs$outcomeType, exposureOutcome$outcomeId, "outcome")
-      ictpdAnalysisSubset <- OhdsiRTools::matchInList(ictpdAnalysisList, loadingArgs)
+      ictpdAnalysisSubset <- ParallelLogger::matchInList(ictpdAnalysisList, loadingArgs)
       for (ictpdAnalysis in ictpdAnalysisSubset) {
         ictpdResultsFile <- .createIctpdResultsFileName(outputFolder, ictpdAnalysis$analysisId)
 
@@ -126,7 +126,7 @@ runIctpdAnalyses <- function(connectionDetails,
   for (ictpdDataFile in unique(resultsReference$ictpdDataFile)) {
     if (ictpdDataFile != "" && !file.exists((ictpdDataFile))) {
       refRow <- resultsReference[resultsReference$ictpdDataFile == ictpdDataFile, ][1, ]
-      analysisRow <- OhdsiRTools::matchInList(ictpdAnalysisList,
+      analysisRow <- ParallelLogger::matchInList(ictpdAnalysisList,
                                               list(analysisId = refRow$analysisId))[[1]]
       getDbIctpdDataArgs <- analysisRow$getDbIctpdDataArgs
       # Cheap trick to find all unique combinations of exposureId and outcomeId:
@@ -153,10 +153,10 @@ runIctpdAnalyses <- function(connectionDetails,
     saveRDS(ictpdData, params$ictpdDataFile)
   }
   if (length(objectsToCreate) != 0) {
-    cluster <- OhdsiRTools::makeCluster(getDbIctpdDataThreads)
-    OhdsiRTools::clusterRequire(cluster, "IcTemporalPatternDiscovery")
-    dummy <- OhdsiRTools::clusterApply(cluster, objectsToCreate, createIctpdDataObject)
-    OhdsiRTools::stopCluster(cluster)
+    cluster <- ParallelLogger::makeCluster(getDbIctpdDataThreads)
+    ParallelLogger::clusterRequire(cluster, "IcTemporalPatternDiscovery")
+    dummy <- ParallelLogger::clusterApply(cluster, objectsToCreate, createIctpdDataObject)
+    ParallelLogger::stopCluster(cluster)
   }
 
   writeLines("*** Computing IC statistics ***")
@@ -164,7 +164,7 @@ runIctpdAnalyses <- function(connectionDetails,
   for (ictpdResultsFile in unique(resultsReference$ictpdResultsFile)) {
     if (ictpdResultsFile != "" && !file.exists((ictpdResultsFile))) {
       refRow <- resultsReference[resultsReference$ictpdResultsFile == ictpdResultsFile, ][1, ]
-      analysisRow <- OhdsiRTools::matchInList(ictpdAnalysisList,
+      analysisRow <- ParallelLogger::matchInList(ictpdAnalysisList,
                                               list(analysisId = refRow$analysisId))[[1]]
       args <- analysisRow$calculateStatisticsIcArgs
       ictpdDataFile <- refRow$ictpdDataFile
@@ -182,10 +182,10 @@ runIctpdAnalyses <- function(connectionDetails,
     saveRDS(ictpdResults, params$ictpdResultsFile)
   }
   if (length(objectsToCreate) != 0) {
-    cluster <- OhdsiRTools::makeCluster(calculateStatisticsIcThreads)
-    OhdsiRTools::clusterRequire(cluster, "IcTemporalPatternDiscovery")
-    dummy <- OhdsiRTools::clusterApply(cluster, objectsToCreate, createIctpdResults)
-    OhdsiRTools::stopCluster(cluster)
+    cluster <- ParallelLogger::makeCluster(calculateStatisticsIcThreads)
+    ParallelLogger::clusterRequire(cluster, "IcTemporalPatternDiscovery")
+    dummy <- ParallelLogger::clusterApply(cluster, objectsToCreate, createIctpdResults)
+    ParallelLogger::stopCluster(cluster)
   }
   invisible(resultsReference)
 }

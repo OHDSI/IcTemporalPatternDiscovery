@@ -5,8 +5,8 @@
 \title{Create a parameter object for the function calculateStatisticsIc}
 \usage{
 createCalculateStatisticsIcArgs(multipleControlPeriods = "110",
-  multipleRiskPeriods = "10000", shrinkage = 0.5, icPercentile = 0.025,
-  metric = "IC025")
+  multipleRiskPeriods = "10000", shrinkage = 0.5,
+  icPercentile = 0.025, metric = "IC025")
 }
 \arguments{
 \item{multipleControlPeriods}{Defines the control periods to use where 100 means the controlperiod

@@ -5,8 +5,8 @@
 \title{compute the IC statistics}
 \usage{
 calculateStatisticsIc(ictpdData, multipleControlPeriods = "110",
-  multipleRiskPeriods = "10000", shrinkage = 0.5, icPercentile = 0.025,
-  metric = "IC025")
+  multipleRiskPeriods = "10000", shrinkage = 0.5,
+  icPercentile = 0.025, metric = "IC025")
 }
 \arguments{
 \item{ictpdData}{An object containing the counts, as created using the

@@ -76,7 +76,7 @@ saveIctpdAnalysisList <- function(ictpdAnalysisList, file) {
   for (i in 1:length(ictpdAnalysisList)) {
     stopifnot(class(ictpdAnalysisList[[i]]) == "ictpdAnalysis")
   }
-  OhdsiRTools::saveSettingsToJson(ictpdAnalysisList, file)
+  ParallelLogger::saveSettingsToJson(ictpdAnalysisList, file)
 }
 
 #' Load a list of ictpdAnalysis from file
@@ -91,7 +91,7 @@ saveIctpdAnalysisList <- function(ictpdAnalysisList, file) {
 #'
 #' @export
 loadIctpdAnalysisList <- function(file) {
-  return(OhdsiRTools::loadSettingsFromJson(file))
+  return(ParallelLogger::loadSettingsFromJson(file))
 }
 
 #' Create exposure-outcome combinations.
@@ -134,7 +134,7 @@ saveExposureOutcomeList <- function(exposureOutcomeList, file) {
   for (i in 1:length(exposureOutcomeList)) {
     stopifnot(class(exposureOutcomeList[[i]]) == "exposureOutcome")
   }
-  OhdsiRTools::saveSettingsToJson(exposureOutcomeList, file)
+  ParallelLogger::saveSettingsToJson(exposureOutcomeList, file)
 }
 
 #' Load a list of exposureOutcome from file
@@ -149,6 +149,6 @@ saveExposureOutcomeList <- function(exposureOutcomeList, file) {
 #'
 #' @export
 loadExposureOutcomeList <- function(file) {
-  return(OhdsiRTools::loadSettingsFromJson(file))
+  return(ParallelLogger::loadSettingsFromJson(file))
 }
 
