@@ -167,30 +167,30 @@ getChronographData <- function(connectionDetails,
   
   ParallelLogger::logInfo("Loading data server")
   sql <- "SELECT exposure_id, period_id, observed_count FROM #exposure"
-  sql <- SqlRender::translateSql(sql,
-                                 targetDialect = connectionDetails$dbms,
-                                 oracleTempSchema = oracleTempSchema)$sql
+  sql <- SqlRender::translate(sql,
+                              targetDialect = connectionDetails$dbms,
+                              oracleTempSchema = oracleTempSchema)
   exposure <- DatabaseConnector::querySql(conn, sql)
   colnames(exposure) <- SqlRender::snakeCaseToCamelCase(colnames(exposure))
   
   sql <- "SELECT period_id, all_observed_count FROM #all"
-  sql <- SqlRender::translateSql(sql,
-                                 targetDialect = connectionDetails$dbms,
-                                 oracleTempSchema = oracleTempSchema)$sql
+  sql <- SqlRender::translate(sql,
+                              targetDialect = connectionDetails$dbms,
+                              oracleTempSchema = oracleTempSchema)
   all <- DatabaseConnector::querySql(conn, sql)
   colnames(all) <- SqlRender::snakeCaseToCamelCase(colnames(all))
   
   sql <- "SELECT exposure_id, outcome_id, period_id, outcome_count FROM #exposure_outcome"
-  sql <- SqlRender::translateSql(sql,
-                                 targetDialect = connectionDetails$dbms,
-                                 oracleTempSchema = oracleTempSchema)$sql
+  sql <- SqlRender::translate(sql,
+                              targetDialect = connectionDetails$dbms,
+                              oracleTempSchema = oracleTempSchema)
   exposureOutcome <- DatabaseConnector::querySql(conn, sql)
   colnames(exposureOutcome) <- SqlRender::snakeCaseToCamelCase(colnames(exposureOutcome))
   
   sql <- "SELECT outcome_id, period_id, all_outcome_count FROM #outcome"
-  sql <- SqlRender::translateSql(sql,
-                                 targetDialect = connectionDetails$dbms,
-                                 oracleTempSchema = oracleTempSchema)$sql
+  sql <- SqlRender::translate(sql,
+                              targetDialect = connectionDetails$dbms,
+                              oracleTempSchema = oracleTempSchema)
   outcome <- DatabaseConnector::querySql(conn, sql)
   colnames(outcome) <- SqlRender::snakeCaseToCamelCase(colnames(outcome))
   
