@@ -66,11 +66,43 @@ WHERE DATEADD(DAY, period.period_start, exposure.@exposure_start_field) <= obser
 GROUP BY period.period_id;
 
 -- Count number of people with the outcome relative to each exposure (within same observation period)	
+SELECT a.exposure_id
+     , a.outcome_id
+	 , a.period_id
+	 , CASE WHEN b.outcome_count IS NULL THEN 0 ELSE b.outcome_count END AS outcome_count
+INTO #exposure_outcome
+FROM
+(
+SELECT exposure.@exposure_id_field AS exposure_id,
+	outcome.@outcome_id_field AS outcome_id,
+    period.period_id
+FROM       (SELECT DISTINCT @exposure_id_field FROM @exposure_database_schema.@exposure_table) exposure
+CROSS JOIN (SELECT DISTINCT period_id          FROM #period) period
+CROSS JOIN (SELECT DISTINCT @outcome_id_field  FROM @outcome_database_schema.@outcome_table outcome) outcome
+{@has_pairs} ? {
+INNER JOIN #exposure_outcome_ids exposure_outcome_ids
+	ON exposure.@exposure_id_field = exposure_outcome_ids.exposure_id
+		AND outcome.@outcome_id_field = exposure_outcome_ids.outcome_id
+}
+WHERE 1=1
+{!@has_pairs} ? {
+{@exposure_ids != ''} ? {
+	AND exposure.@exposure_id_field IN (@exposure_ids)
+}	
+{@outcome_ids != ''} ? {
+	AND outcome.@outcome_id_field IN (@outcome_ids)
+}	
+}
+GROUP BY exposure.@exposure_id_field,
+	outcome.@outcome_id_field,
+    period.period_id
+) a
+LEFT JOIN
+(
 SELECT exposure.@exposure_id_field AS exposure_id,
 	outcome.@outcome_id_field AS outcome_id,
     period.period_id,
 	COUNT(*) AS outcome_count
-INTO #exposure_outcome
 FROM @exposure_database_schema.@exposure_table exposure
 CROSS JOIN #period period
 INNER JOIN @outcome_database_schema.@outcome_table outcome
@@ -99,13 +131,33 @@ WHERE DATEADD(DAY, period.period_start, exposure.@exposure_start_field) <= outco
 }
 GROUP BY exposure.@exposure_id_field,
 	outcome.@outcome_id_field,
-    period.period_id;
+    period.period_id
+) b
+    ON  a.exposure_id = b.exposure_id
+    AND a.outcome_id  = b.outcome_id
+    AND a.period_id   = b.period_id;
 	
 -- Count number of people with the outcome relative to any exposure	(within same observation period)
+SELECT a.outcome_id
+	 , a.period_id
+	 , CASE WHEN b.all_outcome_count IS NULL THEN 0 ELSE b.all_outcome_count END AS all_outcome_count
+INTO #outcome
+FROM
+(
+SELECT outcome.@outcome_id_field AS outcome_id,
+    period.period_id
+FROM       (SELECT DISTINCT @outcome_id_field FROM @outcome_database_schema.@outcome_table outcome) outcome
+CROSS JOIN (SELECT DISTINCT period_id         FROM #period) period
+WHERE 1=1
+{@outcome_ids != ''} ? {
+	AND outcome.@outcome_id_field IN (@outcome_ids)
+}
+) a
+LEFT JOIN
+(
 SELECT outcome.@outcome_id_field AS outcome_id,
     period.period_id,
 	COUNT(*) AS all_outcome_count
-INTO #outcome
 FROM @exposure_database_schema.@exposure_table exposure
 CROSS JOIN #period period
 INNER JOIN @outcome_database_schema.@outcome_table outcome
@@ -126,4 +178,7 @@ WHERE DATEADD(DAY, period.period_start, exposure.@exposure_start_field) <= outco
 	AND outcome.@outcome_id_field IN (@outcome_ids)
 }	
 GROUP BY outcome.@outcome_id_field,
-    period.period_id;
+    period.period_id
+) b
+    ON  a.outcome_id  = b.outcome_id
+    AND a.period_id   = b.period_id;

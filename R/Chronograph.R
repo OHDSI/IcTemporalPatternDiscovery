@@ -110,13 +110,16 @@ getChronographData <- function(connectionDetails,
   }
   periodLength <- 30
   numberOfPeriods <- 72
-  periodStarts <- seq(from = 1 - periodLength * numberOfPeriods/2,
-                      to = 1 + periodLength * (-1 + numberOfPeriods/2),
-                      by = periodLength)
-  periodEnds <- periodStarts + periodLength - 1
+  periodStarts <- c(
+    seq(-periodLength*numberOfPeriods/2L, -1L, by=periodLength),
+    0L,
+    seq(1L, 1L + periodLength * (-1L + numberOfPeriods/2L), by=periodLength)
+  )
+  periodEnds <- periodStarts + periodLength - 1L
+  periodEnds[periodStarts==0L] <- 0L
   periods <- data.frame(periodStart = periodStarts,
                         periodEnd = periodEnds,
-                        periodId = 1:numberOfPeriods - numberOfPeriods/2 - 1)
+                        periodId = c((-numberOfPeriods/2L):(-1L),0L,1L:(numberOfPeriods/2L)))
   periodsForDb <- periods
   colnames(periodsForDb) <- SqlRender::camelCaseToSnakeCase(colnames(periodsForDb))
   
