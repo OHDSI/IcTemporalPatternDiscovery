@@ -1,6 +1,8 @@
 IC Temporal Pattern Discovery
 =============================
 
+[![Build Status](https://travis-ci.org/OHDSI/IcTemporalPatternDiscovery.svg?branch=master)](https://travis-ci.org/OHDSI/IcTemporalPatternDiscovery)
+
 Introduction
 ============
 
@@ -42,32 +44,27 @@ System Requirements
 ============
 Requires R (version 3.1.0 or higher). Libraries used in this package require Java.
 
-Dependencies
+Installation
 ============
-
- * ParallelLogger
- * DatabaseConnector
- * SqlRender
-
-Getting Started
-===============
 1. The DatabaseConnector and SqlRender packages require Java. Java can be downloaded from
 <a href="http://www.java.com" target="_blank">http://www.java.com</a>.
 2. In R, use the following commands to download and install IcTemporalPatternDiscovery:
 
   ```r
-  install.packages("devtools")
-  library(devtools)
-  install_github("ohdsi/ParallelLogger") 
-  install_github("ohdsi/IcTemporalPatternDiscovery") 
+  install.packages("drat")
+  drat::addRepo("OHDSI")
+  install.packages("IcTemporalPatternDiscovery")
   ```
 
-Getting Involved
-=============
+User Documentation
+==================
 * Package manual: [IcTemporalPatternDiscovery.pdf](https://raw.githubusercontent.com/OHDSI/IcTemporalPatternDiscovery/master/extras/IcTemporalPatternDiscovery.pdf) 
+
+Support
+=======
 * Developer questions/comments/feedback: <a href="http://forums.ohdsi.org/c/developers">OHDSI Forum</a>
-* We use the <a href="../../issues">GitHub issue tracker</a> for all bugs/issues/enhancements
- 
+* We use the <a href="https://github.com/OHDSI/IcTemporalPatternDiscovery/issues">GitHub issue tracker</a> for all bugs/issues/enhancements
+
 License
 =======
 IcTemporalPatternDiscovery is licensed under Apache License 2.0
@@ -78,10 +75,7 @@ IcTemporalPatternDiscovery is being developed in R Studio.
 
 ### Development status
 
-[![Build Status](https://travis-ci.org/OHDSI/IcTemporalPatternDiscovery.svg?branch=master)](https://travis-ci.org/OHDSI/IcTemporalPatternDiscovery)
-
 Beta
-
 
 # Acknowledgements
 This package was developed by Tomas Bergvall, adapted by Martijn Schuemie.
