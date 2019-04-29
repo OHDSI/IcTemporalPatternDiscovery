@@ -4,19 +4,21 @@ Title: IC Temporal Pattern Discovery
 Version: 1.1.1
 Date: 2018-10-09
 Authors@R: c(
-    person("Tomas", "Bergvall", email = "tomas.bergvall@who-umc.org", role = c("aut", "cre")),
-    person("Martijn", "Schuemie", email = "schuemie@ohdsi.org", role = c("aut")),
-    person("Observational Health Data Science and Informatics", role = c("cph"))
-  )
+	person("Tomas", "Bergvall", email = "tomas.bergvall@who-umc.org", role = c("aut", "cre")),
+	person("Martijn", "Schuemie", email = "schuemie@ohdsi.org", role = c("aut")),
+	person("Observational Health Data Science and Informatics", role = c("cph"))
+	)
 Maintainer: Tomas Bergvall <tomas.bergvall@who-umc.org>
 Description: Population-level estimation method that estimates risk by combining
-    a self-controlled and cohort design.
+	a self-controlled and cohort design.
+URL: https://ohdsi.github.io/IcTemporalPatternDiscovery, https://github.com/OHDSI/IcTemporalPatternDiscovery
+BugReports: https://github.com/OHDSI/IcTemporalPatternDiscovery/issues
 Depends:
-    DatabaseConnector (>= 1.11.4),
+	DatabaseConnector (>= 1.11.4),
 Imports:
-    SqlRender,
-    ParallelLogger,
-    ggplot2,
-    gridExtra
+	SqlRender,
+	ParallelLogger,
+	ggplot2,
+	gridExtra
 License: Apache License 2.0
 RoxygenNote: 6.1.1
