@@ -26,10 +26,32 @@ IF OBJECT_ID('tempdb..#outcome', 'U') IS NOT NULL
 	DROP TABLE #outcome;		
 
 -- Count number of people observed relative to each exposure	
+SELECT a.exposure_id
+	 , a.period_id
+	 , CASE WHEN b.observed_count IS NULL THEN 0 ELSE b.observed_count END AS observed_count
+INTO #exposure
+FROM
+(
+SELECT exposure.@exposure_id_field AS exposure_id,
+    period.period_id
+FROM       (SELECT DISTINCT @exposure_id_field FROM @exposure_database_schema.@exposure_table) exposure
+CROSS JOIN (SELECT DISTINCT period_id          FROM #period) period
+WHERE 1=1
+{@exposure_ids != ''} ? {
+	AND exposure.@exposure_id_field IN (@exposure_ids)
+} : {
+ {@has_pairs} ? {
+ 	AND exposure.@exposure_id_field IN (SELECT DISTINCT exposure_id FROM #exposure_outcome_ids)
+ }
+}
+GROUP BY exposure.@exposure_id_field,
+    period.period_id
+) a
+LEFT JOIN
+(
 SELECT exposure.@exposure_id_field AS exposure_id,
     period.period_id,
 	COUNT(*) AS observed_count
-INTO #exposure
 FROM @exposure_database_schema.@exposure_table exposure
 CROSS JOIN #period period
 INNER JOIN @cdm_database_schema.observation_period
@@ -46,7 +68,10 @@ WHERE DATEADD(DAY, period.period_start, exposure.@exposure_start_field) <= obser
  }
 }	
 GROUP BY exposure.@exposure_id_field,
-    period.period_id;
+    period.period_id
+) b
+    ON  a.exposure_id = b.exposure_id
+    AND a.period_id   = b.period_id;
 	
 -- Count number of people observed relative to any exposure	
 SELECT period.period_id,
