@@ -253,12 +253,12 @@ plotChronograph <- function(data, exposureId, outcomeId, title = NULL, fileName 
   if (max(data$icHigh) + 0.5 < 1) {
     yMax <- 1
   } else {
-    yMax <- max(data$icHigh) + 0.5
+    yMax <- max(data$icHigh) + 0.1
   }
-  if (max(data$icLow) - 1 > -1) {
+  if (min(data$icLow) - 0.5 > -1) {
     yMin <- -1
   } else {
-    yMin <- max(data$icLow) - 1
+    yMin <- min(data$icLow) - 0.1
   }
   topPlot <- with(data, ggplot2::ggplot() +
                     ggplot2::geom_hline(yintercept = 0, color = "black", size = 0.2, linetype = 2) +
@@ -311,11 +311,19 @@ plotChronograph <- function(data, exposureId, outcomeId, title = NULL, fileName 
                                            data = zeroData) +
                        ggplot2::scale_x_continuous(name = "Months relative to first exposure",
                                                    breaks = (-5:5) * 12) +
+                       ggplot2::scale_y_continuous(name="Number of outcomes",
+                                                   breaks = function(x) {
+                                                     if (all(x==0)) { x <- c(0,1) }
+                                                     else           { x <- c(0,x) }
+                                                     out <- unique(ceiling(pretty(x)))
+                                                     return(out)
+                                                   }) +
                        ggplot2::scale_fill_manual(name = "", values = c(rgb(0.3, 0.7, 0.8, alpha = 0.5))) +
                        ggplot2::scale_color_manual(name = "", values = c(rgb(0, 0, 0.8))) +
-                       ggplot2::ylab("Number of outcomes") +
-                       ggplot2::theme(legend.justification = c(0, 1),
-                                      legend.position = c(0.8, 0.9),
+                       ggplot2::coord_cartesian(ylim = c(0L, max(data$outcomeCount, data$expectedCount, 1L))) +
+                       ggplot2::theme(panel.grid.minor.y = ggplot2::element_blank(),
+                                      legend.justification = c(1, 1),
+                                      legend.position = c(1, 1),
                                       legend.direction = "horizontal",
                                       legend.box = "vertical",
                                       legend.key.height = ggplot2::unit(0.4, units = "lines"),
