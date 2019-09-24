@@ -176,7 +176,13 @@ WHERE DATEADD(DAY, period.period_start, exposure.@exposure_start_field) <= outco
 }	
 {@outcome_ids != ''} ? {
 	AND outcome.@outcome_id_field IN (@outcome_ids)
-}	
+} : {
+ {@has_pairs} ? {
+ 	AND outcome.@outcome_id_field IN (SELECT DISTINCT outcome_id FROM #exposure_outcome_ids)
+ }
+}
+
+
 GROUP BY outcome.@outcome_id_field,
     period.period_id
 ) b
