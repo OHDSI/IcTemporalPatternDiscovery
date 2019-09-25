@@ -48,7 +48,7 @@
 #'                                                  cohort_concept_id of the exposure variable}
 #'                                            \item {"outcomeId" containing the condition_concept_ID or
 #'                                                  cohort_concept_id of the outcome variable}
-#'                                          }Each row specifies an exposure-outcome-combination for 
+#'                                          } Each row specifies an exposure-outcome-combination for 
 #'                                 which to collect data for. If left empty, all possible combinations of exposures and
 #'                                 outcomes will be computed, which could be time consuming.
 #' @param exposureDatabaseSchema   The name of the database schema that is the location where the
