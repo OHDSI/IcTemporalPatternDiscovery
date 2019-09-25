@@ -29,13 +29,15 @@
 #'                                 to this database.
 #' @param cdmVersion               Define the OMOP CDM version used: currently supports "5".
 #' @param exposureIds              A vector of IDs identifying the exposures to include when computing 
-#'                                 the expected count. If the
-#'                                 expsosure table is the drug_era table, these IDs correspond to
+#'                                 the expected count, i.e. the supplied IDs will define the 
+#'                                 background population in the chronograph. If the
+#'                                 exposure table is the drug_era table, these IDs correspond to
 #'                                 ingredient concept IDs. If the exposure table has the format of the
 #'                                 cohort table, these IDs correspond to the cohort definition IDs. If
 #'                                 left empty, all records in the exposure table will be used.
 #' @param outcomeIds               A vector of IDs identifying the outcomes to include when computing 
-#'                                 the expected count.. If the outcome
+#'                                 the expected count, i.e. the supplied IDs will define the 
+#'                                 background population in the chronograph. If the outcome
 #'                                 table is the drug_era table, these IDs correspond to condition
 #'                                 concept IDs. If the outcomes table has the format of the cohort
 #'                                 table, these IDs correspond to the cohort definition IDs. If left
@@ -46,8 +48,9 @@
 #'                                                  cohort_concept_id of the exposure variable}
 #'                                            \item {"outcomeId" containing the condition_concept_ID or
 #'                                                  cohort_concept_id of the outcome variable}
-#'                                          }. If left empty, all possible combinations of exposures and
-#'                                          outcomes will be computed.
+#'                                          }Each row specifies an exposure-outcome-combination for 
+#'                                 which to collect data for. If left empty, all possible combinations of exposures and
+#'                                 outcomes will be computed, which could be time consuming.
 #' @param exposureDatabaseSchema   The name of the database schema that is the location where the
 #'                                 exposure data is available.  If exposureTable = DRUG_ERA,
 #'                                 exposureSchema is not used by assumed to be cdmSchema.  Requires
