@@ -91,8 +91,13 @@ getChronographData <- function(connectionDetails,
                                shrinkage = 0.5,
                                icPercentile = 0.025) {
   start <- Sys.time()
+  
+  # Convert parameter names to lower case ----
   exposureTable <- tolower(exposureTable)
   outcomeTable <- tolower(outcomeTable)
+  
+  # Depending on exposureTable being drug era or not, ----
+  # assign additional parameter values
   if (exposureTable == "drug_era") {
     exposureStartField <- "drug_era_start_date"
     exposureIdField <- "drug_concept_id"
@@ -111,6 +116,9 @@ getChronographData <- function(connectionDetails,
     outcomeIdField <- "cohort_definition_id"
     outcomePersonIdField <- "subject_id"
   }
+  
+  # Create a df where each time period is a row ("periodsForDb"), ---
+  # which is inserted into the db as a temptable #period
   periodLength <- 30
   numberOfPeriods <- 72
   periodStarts <- c(
@@ -126,6 +134,7 @@ getChronographData <- function(connectionDetails,
   periodsForDb <- periods
   colnames(periodsForDb) <- SqlRender::camelCaseToSnakeCase(colnames(periodsForDb))
   
+  # Connect to database ----
   conn <- DatabaseConnector::connect(connectionDetails)
   on.exit(DatabaseConnector::disconnect(conn))
   
@@ -138,6 +147,7 @@ getChronographData <- function(connectionDetails,
                                  tempTable = TRUE,
                                  oracleTempSchema = oracleTempSchema)
   
+  # Create an exposure-outcome-tempdb if exposureOutcomePairs is not null ----
   if (is.null(exposureOutcomePairs)) {
     hasPairs <- FALSE
   } else {
@@ -150,6 +160,8 @@ getChronographData <- function(connectionDetails,
                                    dropTableIfExists = TRUE)
   }
   
+  # run SQL-script CreateChronographData, where several temptables (#outcome, #exposure, ...), ----
+  # are created
   sql <- SqlRender::loadRenderTranslateSql(sqlFilename = "CreateChronographData.sql",
                                            packageName = "IcTemporalPatternDiscovery",
                                            dbms = connectionDetails$dbms,
@@ -171,6 +183,7 @@ getChronographData <- function(connectionDetails,
   ParallelLogger::logInfo("Creating counts on server")
   DatabaseConnector::executeSql(conn, sql)
   
+  # Get observed count, for all periods ----
   ParallelLogger::logInfo("Loading data server")
   sql <- "SELECT exposure_id, period_id, observed_count FROM #exposure"
   sql <- SqlRender::translate(sql,
@@ -179,6 +192,7 @@ getChronographData <- function(connectionDetails,
   exposure <- DatabaseConnector::querySql(conn, sql)
   colnames(exposure) <- SqlRender::snakeCaseToCamelCase(colnames(exposure))
   
+  # Get total count, for all periods ---- 
   sql <- "SELECT period_id, all_observed_count FROM #all"
   sql <- SqlRender::translate(sql,
                               targetDialect = connectionDetails$dbms,
@@ -186,6 +200,7 @@ getChronographData <- function(connectionDetails,
   all <- DatabaseConnector::querySql(conn, sql)
   colnames(all) <- SqlRender::snakeCaseToCamelCase(colnames(all))
   
+  # Get outcomes-count for exposed for all periods ----
   sql <- "SELECT exposure_id, outcome_id, period_id, outcome_count FROM #exposure_outcome"
   sql <- SqlRender::translate(sql,
                               targetDialect = connectionDetails$dbms,
@@ -193,6 +208,7 @@ getChronographData <- function(connectionDetails,
   exposureOutcome <- DatabaseConnector::querySql(conn, sql)
   colnames(exposureOutcome) <- SqlRender::snakeCaseToCamelCase(colnames(exposureOutcome))
   
+  # Get total outcomes-count, for all periods ----   
   sql <- "SELECT outcome_id, period_id, all_outcome_count FROM #outcome"
   sql <- SqlRender::translate(sql,
                               targetDialect = connectionDetails$dbms,
@@ -200,6 +216,7 @@ getChronographData <- function(connectionDetails,
   outcome <- DatabaseConnector::querySql(conn, sql)
   colnames(outcome) <- SqlRender::snakeCaseToCamelCase(colnames(outcome))
   
+  # Cleanup, drop temptables and so on
   sql <- SqlRender::loadRenderTranslateSql(sqlFilename = "DropChronographTables.sql",
                                            packageName = "IcTemporalPatternDiscovery",
                                            dbms = connectionDetails$dbms,
@@ -207,6 +224,14 @@ getChronographData <- function(connectionDetails,
                                            has_pairs = hasPairs)
   DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
   
+  # Gather the results, calculate ic (by function ic found in ICTPD.R: ----
+  # ic <- function(obs, exp, shape.add = 0.5, rate.add = 0.5, percentile = 0.025) {
+  #   ic <- log2((obs + shape.add)/(exp + rate.add))
+  #   ic_low <- log2(qgamma(p = percentile, shape = (obs + shape.add), rate = (exp + rate.add)))
+  #   ic_high <- log2(qgamma(p = (1 - percentile), shape = (obs + shape.add), rate = (exp + rate.add)))
+  #   return(list(ic = ic, ic_low = ic_low, ic_high = ic_high))
+  # }
+ 
   result <- merge(all, exposure)
   result <- merge(result, outcome)
   result <- merge(exposureOutcome, result)
