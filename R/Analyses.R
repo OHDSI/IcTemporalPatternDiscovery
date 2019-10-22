@@ -32,10 +32,50 @@
 #'                                    this field should be used to select the specific outcome to use
 #'                                    in this analysis.
 #' @param getDbIctpdDataArgs          An object representing the arguments to be used when calling the
-#'                                    \code{\link{getDbIctpdData}} function.
+#'                                    \code{\link{getDbIctpdData}} function, e.g. a list with names and 
+#'                                    values corresponding to a call to \code{\link{getDbIctpdData}}. 
+#'                                    It's convenient to use \code{\link{createGetDbIctpdDataArgs}} on 
+#'                                    the returning object of \code{\link{getDbIctpdData}}. 
 #' @param calculateStatisticsIcArgs   An object representing the arguments to be used when calling the
-#'                                    \code{\link{calculateStatisticsIc}} function.
-#'
+#'                                    \code{\link{calculateStatisticsIc}} function, analogous to 
+#'                                    getDbIctpdDataArgs.
+#' @return                            Returns a list, with type set to "ictpdAnalysis", with the input parameters
+#'                                    as list elements.             
+#' @examples
+#' 
+#' # Example 1. "Use the args-functions on a prespecificed analysis"
+#' 
+#' # Set up (for use with synpuf5pct-data)
+#' connectionDetails <- createConnectionDetails(dbms  ="sql server", server="UMCDB06", schema="OmopCdm")
+#' conn <- DatabaseConnector::connect(connectionDetails)
+#' cdmDatabaseSchema <- "synpuf5pct_20180710"
+#' exposureIds = c(40170549,  1321636, 40167333, 711452, 40173533, 981774, 19030860, 19037401,  925102,  1337068)
+#' outcomeIds = c(321389, 73609, 134401, 74725, 375251, 199063, 381580, 4046804, 442094,  436883)
+#' exposureOutcomePairs_example = data.frame("exposureId"=exposureIds, "outcomeId"=outcomeIds)
+#' 
+#' # Create an analysis
+#' prespec_analysis <- getChronographData(connectionDetails = connectionDetails,
+# oracleTempSchema = NULL,
+# cdmDatabaseSchema = "synpuf5pct_20180710",
+# cdmVersion = "5",
+# exposureIds = c(40170549,  1321636, 40167333,   711452, 40173533,   981774, 19030860, 19037401,   925102,  1337068)[1],
+# outcomeIds = c(321389,   73609,  134401,   74725,  375251,  199063,  381580, 4046804,  442094,  436883)[1],
+# exposureOutcomePairs = data.frame("exposureId"=exposureIds,
+#                                   "outcomeId"=outcomeIds),
+# exposureDatabaseSchema = cdmDatabaseSchema,
+# exposureTable = "drug_era",
+# outcomeDatabaseSchema = cdmDatabaseSchema,
+# outcomeTable = "condition_era",
+# shrinkage = 0.5,
+# icPercentile = 0.025
+# )
+#' 
+#' # Store the input parameters of the analysis
+#' data_params <- createGetDbIctpdDataArgs(prespec_analysis)
+#' 
+#' createIctpdAnalysis(analysisId = 1, "An example of input parameters", getDbIctpdDataArgs=data_params)   
+#' 
+#' 
 #' @export
 createIctpdAnalysis <- function(analysisId = 1,
                                 description = "",

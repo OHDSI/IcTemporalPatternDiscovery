@@ -48,9 +48,17 @@ empty, all records in the outcome table will be used.}
                  cohort_concept_id of the exposure variable}
            \item {"outcomeId" containing the condition_concept_ID or
                  cohort_concept_id of the outcome variable}
-         }Each row specifies an exposure-outcome-combination for 
+         } Each row specifies an exposure-outcome-combination for 
 which to collect data for. If left empty, all possible combinations of exposures and
-outcomes will be computed, which could be time consuming.}
+outcomes will be computed, which could be time consuming.
+To collect data for plotting multiple exposures and/or multiple outcomes in a single
+ chronograph, two other "grouping" columns might be passed: 
+         \itemize{
+           \item {"exposureGrouping" with the same valueat each row with an exposure to
+                 include in an exposure grouping}
+           \item {"outcomeGrouping" with the same valueat each row with an exposure to
+                 include in an exposure grouping}
+}See details and examples below.}
 
 \item{exposureDatabaseSchema}{The name of the database schema that is the location where the
 exposure data is available.  If exposureTable = DRUG_ERA,
@@ -79,9 +87,37 @@ counts, but larger number means more shrinkage. default is 0.5}
 (IClow). default is 0.025,}
 }
 \value{
-An data frame with observed and expected outcome counts in periods relative to the exposure
+A data frame with observed and expected outcome counts in periods relative to the exposure
 initiation date, for each outcome and exposure.
 }
 \description{
 Get the data for creating chronographs from the server.
+}
+\details{
+When mapping vocabularies e.g. medDRA to SNOMED, it is possible that multiple terms are found. To create a chronograph for the joint SNOMED-terms, 
+          data collected from server for single exposures and outcomes can not be used for multiple exposures or multiple outcomes, 
+          as the same person might be counted multiple times. You should instead specify grouping columns in the 
+          exposureOutcomePairs-argument table.
+}
+\examples{
+  # Create exposureOutcomePairs for multiple exposures and multiple outcomes, as well as for single rows
+
+grouping_df <- cbind.data.frame("exposureGrouping"=1, "outcomeGrouping"=1, setNames(expand.grid(c(40170549, 1321636), c(321389,   73609,  134401)), c("exposureId", "outcomeId")))
+single_df <- cbind.data.frame("exposureGrouping"=2:3, "outcomeGrouping"=2:3, "exposureId"=c(40170549, 1321636), "outcomeId"=c(321389,   73609))
+exposureOutcomePairs <- rbind.data.frame(grouping_df, single_df)
+          
+ output <- getChronographData(connectionDetails = connectionDetails,
+                              oracleTempSchema = NULL,
+                              cdmDatabaseSchema = "synpuf5pct_20180710",
+                              cdmVersion = "5",
+                              exposureOutcomePairs = exposureOutcomePairs,
+                              exposureDatabaseSchema = cdmDatabaseSchema,
+                              exposureTable = "drug_era",
+                              outcomeDatabaseSchema = cdmDatabaseSchema,
+                              outcomeTable = "condition_era",
+                              shrinkage = 0.5,
+                              icPercentile = 0.025)#
+ 
+ plot(IcTemporalPatternDiscovery::plotChronograph(data=output, exposureGrouping = 1, outcomeGrouping = 1, title="Exposures 40170549, 1321636 vs Outcomes 321389, 73609, 134401"))
+
 }

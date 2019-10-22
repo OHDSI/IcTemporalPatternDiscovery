@@ -6,13 +6,13 @@ IC Temporal Pattern Discovery
 Introduction
 ============
 
-This R package is an implementation of the IC Temporal Pattern Discovery method to estimate risk by combining a self-controlled and cohort design. It is designed to run against observational databases in the OMOP Common Data Model.
+This R package is an implementation of the IC Temporal Pattern Discovery method to estimate risk by combining a self-controlled and cohort design. IC stands for Information component and is log2 of a shrunken observed-to-expected ratio. The package is designed to run against observational databases in the OMOP Common Data Model.
 
 Features
 ========
 - Extracts the necessary data from a database in OMOP Common Data Model format.
 - Supports various risk and control window definitions.
-- Create Chronographs to explore time-to-event relationships.
+- Create Chronographs (a two-panel longitudinal plot of IC and observed/expected counts) to explore time-to-event relationships.
 
 Example
 =======
@@ -78,4 +78,4 @@ IcTemporalPatternDiscovery is being developed in R Studio.
 Beta
 
 # Acknowledgements
-This package was developed by Tomas Bergvall, adapted by Martijn Schuemie.
+This package was developed by Tomas Bergvall, adapted by Martijn Schuemie and modified by Ola Caster and Oskar Gauffin

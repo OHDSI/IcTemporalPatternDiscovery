@@ -14,6 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+#  This script contains the following functions:
+#  getChronographData
+#  plotChronograph
+
 #' @title
 #' Get the data for chronographs from the server.
 #'
@@ -51,6 +55,14 @@
 #'                                          } Each row specifies an exposure-outcome-combination for 
 #'                                 which to collect data for. If left empty, all possible combinations of exposures and
 #'                                 outcomes will be computed, which could be time consuming.
+#'                                 To collect data for plotting multiple exposures and/or multiple outcomes in a single
+#'                                  chronograph, two other "grouping" columns might be passed: 
+#'                                          \itemize{
+#'                                            \item {"exposureGrouping" with the same valueat each row with an exposure to
+#'                                                  include in an exposure grouping}
+#'                                            \item {"outcomeGrouping" with the same valueat each row with an exposure to
+#'                                                  include in an exposure grouping}
+#'                                 }See details and examples below.
 #' @param exposureDatabaseSchema   The name of the database schema that is the location where the
 #'                                 exposure data is available.  If exposureTable = DRUG_ERA,
 #'                                 exposureSchema is not used by assumed to be cdmSchema.  Requires
@@ -72,8 +84,32 @@
 #' @param icPercentile             The lower bound of the credibility interval for the IC values
 #'                                 (IClow). default is 0.025,
 #'
+#' @examples   # Create exposureOutcomePairs for multiple exposures and multiple outcomes, as well as for single rows
+#' 
+#' grouping_df <- cbind.data.frame("exposureGrouping"=1, "outcomeGrouping"=1, setNames(expand.grid(c(40170549, 1321636), c(321389,   73609,  134401)), c("exposureId", "outcomeId")))
+#' single_df <- cbind.data.frame("exposureGrouping"=2:3, "outcomeGrouping"=2:3, "exposureId"=c(40170549, 1321636), "outcomeId"=c(321389,   73609))
+#' exposureOutcomePairs <- rbind.data.frame(grouping_df, single_df)
+#'           
+#'  output <- getChronographData(connectionDetails = connectionDetails,
+#'                               oracleTempSchema = NULL,
+#'                               cdmDatabaseSchema = "synpuf5pct_20180710",
+#'                               cdmVersion = "5",
+#'                               exposureOutcomePairs = exposureOutcomePairs,
+#'                               exposureDatabaseSchema = cdmDatabaseSchema,
+#'                               exposureTable = "drug_era",
+#'                               outcomeDatabaseSchema = cdmDatabaseSchema,
+#'                               outcomeTable = "condition_era",
+#'                               shrinkage = 0.5,
+#'                               icPercentile = 0.025)#
+#'  
+#'  plot(IcTemporalPatternDiscovery::plotChronograph(data=output, exposureGrouping = 1, outcomeGrouping = 1, title="Exposures 40170549, 1321636 vs Outcomes 321389, 73609, 134401"))
+#'
+#' @details  When mapping vocabularies e.g. medDRA to SNOMED, it is possible that multiple terms are found. To create a chronograph for the joint SNOMED-terms, 
+#'           data collected from server for single exposures and outcomes can not be used for multiple exposures or multiple outcomes, 
+#'           as the same person might be counted multiple times. You should instead specify grouping columns in the 
+#'           exposureOutcomePairs-argument table. 
 #' @return
-#' An data frame with observed and expected outcome counts in periods relative to the exposure
+#' A data frame with observed and expected outcome counts in periods relative to the exposure
 #' initiation date, for each outcome and exposure.
 #'
 #' @export
@@ -160,9 +196,19 @@ getChronographData <- function(connectionDetails,
                                    dropTableIfExists = TRUE)
   }
   
+  
+  # If exposureOutcomePairs has groupings, run special version of createChronographData
+
+  grouping_flag <- any(grepl("group", colnames(exposureOutcomePairs), ignore.case = T))
+  
+  sql_filename <- ifelse(grouping_flag, 
+                         "CreateChronographDataWithGroupings.sql",
+                         "CreateChronographData.sql")
+  
+  
   # run SQL-script CreateChronographData, where several temptables (#outcome, #exposure, ...), ----
   # are created
-  sql <- SqlRender::loadRenderTranslateSql(sqlFilename = "CreateChronographData.sql",
+  sql <- SqlRender::loadRenderTranslateSql(sqlFilename = sql_filename,
                                            packageName = "IcTemporalPatternDiscovery",
                                            dbms = connectionDetails$dbms,
                                            oracleTempSchema = oracleTempSchema,
@@ -185,11 +231,14 @@ getChronographData <- function(connectionDetails,
   
   # Get observed count, for all periods ----
   ParallelLogger::logInfo("Loading data server")
-  sql <- "SELECT exposure_id, period_id, observed_count FROM #exposure"
+  sql <- "SELECT * FROM #exposure"
   sql <- SqlRender::translate(sql,
                               targetDialect = connectionDetails$dbms,
                               oracleTempSchema = oracleTempSchema)
   exposure <- DatabaseConnector::querySql(conn, sql)
+  if(grouping_flag){
+    colnames(exposure)[1] = "exposure_grouping"
+  }
   colnames(exposure) <- SqlRender::snakeCaseToCamelCase(colnames(exposure))
   
   # Get total count, for all periods ---- 
@@ -201,7 +250,7 @@ getChronographData <- function(connectionDetails,
   colnames(all) <- SqlRender::snakeCaseToCamelCase(colnames(all))
   
   # Get outcomes-count for exposed for all periods ----
-  sql <- "SELECT exposure_id, outcome_id, period_id, outcome_count FROM #exposure_outcome"
+  sql <- "SELECT * FROM #exposure_outcome"
   sql <- SqlRender::translate(sql,
                               targetDialect = connectionDetails$dbms,
                               oracleTempSchema = oracleTempSchema)
@@ -209,11 +258,14 @@ getChronographData <- function(connectionDetails,
   colnames(exposureOutcome) <- SqlRender::snakeCaseToCamelCase(colnames(exposureOutcome))
   
   # Get total outcomes-count, for all periods ----   
-  sql <- "SELECT outcome_id, period_id, all_outcome_count FROM #outcome"
+  sql <- "SELECT * FROM #outcome"
   sql <- SqlRender::translate(sql,
                               targetDialect = connectionDetails$dbms,
                               oracleTempSchema = oracleTempSchema)
   outcome <- DatabaseConnector::querySql(conn, sql)
+  if(grouping_flag){
+    colnames(outcome)[1] = "outcome_grouping"
+  }
   colnames(outcome) <- SqlRender::snakeCaseToCamelCase(colnames(outcome))
   
   # Cleanup, drop temptables and so on
@@ -225,18 +277,11 @@ getChronographData <- function(connectionDetails,
   DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
   
   # Gather the results, calculate ic (by function ic found in ICTPD.R: ----
-  # ic <- function(obs, exp, shape.add = 0.5, rate.add = 0.5, percentile = 0.025) {
-  #   ic <- log2((obs + shape.add)/(exp + rate.add))
-  #   ic_low <- log2(qgamma(p = percentile, shape = (obs + shape.add), rate = (exp + rate.add)))
-  #   ic_high <- log2(qgamma(p = (1 - percentile), shape = (obs + shape.add), rate = (exp + rate.add)))
-  #   return(list(ic = ic, ic_low = ic_low, ic_high = ic_high))
-  # }
- 
   result <- merge(all, exposure)
   result <- merge(result, outcome)
   result <- merge(exposureOutcome, result)
   result$expectedCount <- result$observedCount * result$allOutcomeCount/result$allObservedCount
-  ic <- ic(obs = result$outcomeCount,
+  ic <- IcTemporalPatternDiscovery:::ic(obs = result$outcomeCount,
            exp = result$expectedCount,
            shape.add = shrinkage,
            rate.add = shrinkage,
@@ -272,12 +317,20 @@ getChronographData <- function(connectionDetails,
 #' 361-387.
 #'
 #' @export
-plotChronograph <- function(data, exposureId, outcomeId, title = NULL, fileName = NULL) {
-  data <- data[data$exposureId == exposureId & data$outcomeId == outcomeId, ]
+plotChronograph <- function(data, exposureId, outcomeId, exposureGrouping=NULL, outcomeGrouping=NULL, title = NULL, fileName = NULL) {
+  
+  if(all(!is.null(c(exposureGrouping, outcomeGrouping)))){
+    data <- data[data$exposureGrouping %in% exposureGrouping & data$outcomeGrouping %in% outcomeGrouping,]
+  } else {
+    data <- data[data$exposureId == exposureId & data$outcomeId == outcomeId, ]
+  }
+  
+  # Cut up data depending on which period they occured in ----
   negData <- data[data$periodId < 0, ]
   posData <- data[data$periodId > 0, ]
   zeroData <- data[data$periodId == 0, ]
   
+  # Set plotting parameters depending on the calculated ic-values ----
   if (max(data$icHigh) + 0.5 < 1) {
     yMax <- 1
   } else {
@@ -288,6 +341,8 @@ plotChronograph <- function(data, exposureId, outcomeId, title = NULL, fileName 
   } else {
     yMin <- min(data$icLow) - 0.1
   }
+  
+  # Create top panel ---- 
   topPlot <- with(data, ggplot2::ggplot() +
                     ggplot2::geom_hline(yintercept = 0, color = "black", size = 0.2, linetype = 2) +
                     ggplot2::geom_errorbar(ggplot2::aes(x = periodId, ymax = icHigh, ymin = icLow),
@@ -318,6 +373,7 @@ plotChronograph <- function(data, exposureId, outcomeId, title = NULL, fileName 
                     ggplot2::theme(axis.title.x = ggplot2::element_blank())
   )
   
+  # Create bottom panel ---- 
   bottomPlot <- with(data, ggplot2::ggplot() +
                        ggplot2::geom_bar(ggplot2::aes(x = periodId, y = outcomeCount, fill = "Observed"),
                                          stat = "identity",
@@ -358,6 +414,8 @@ plotChronograph <- function(data, exposureId, outcomeId, title = NULL, fileName 
                                       legend.key = ggplot2::element_rect(fill = "transparent", color = NA),
                                       legend.background = ggplot2::element_rect(fill = "white", color = "black", size = 0.2))
   )
+  
+  # Put the two panels together and plot ---- 
   plots <- list(topPlot, bottomPlot)
   grobs <- widths <- list()
   for (i in 1:length(plots)) {
@@ -370,7 +428,7 @@ plotChronograph <- function(data, exposureId, outcomeId, title = NULL, fileName 
   }
   plot <- gridExtra::grid.arrange(grobs[[1]], grobs[[2]], top = grid::textGrob(title))
   
-  
+  # Possibly save the plot ----
   if (!is.null(fileName))
     ggplot2::ggsave(fileName, plot, width = 7, height = 5, dpi = 400)
   return(plot)
