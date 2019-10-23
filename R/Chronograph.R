@@ -55,14 +55,12 @@
 #'                                          } Each row specifies an exposure-outcome-combination for 
 #'                                 which to collect data for. If left empty, all possible combinations of exposures and
 #'                                 outcomes will be computed, which could be time consuming.
-#'                                 To collect data for plotting multiple exposures and/or multiple outcomes in a single
-#'                                  chronograph, two other "grouping" columns might be passed: 
+#'                                 To collect data for plotting multiple exposures and outcomes in a single
+#'                                  chronograph, an additional "grouping" column might be passed: 
 #'                                          \itemize{
-#'                                            \item {"exposureGrouping" with the same valueat each row with an exposure to
-#'                                                  include in an exposure grouping}
-#'                                            \item {"outcomeGrouping" with the same valueat each row with an exposure to
-#'                                                  include in an exposure grouping}
-#'                                 }See details and examples below.
+#'                                            \item {"grouping" with the same value at each row with an exposure and exposure to
+#'                                                  include in a grouping. See details and examples below.}
+#'                                 }
 #' @param exposureDatabaseSchema   The name of the database schema that is the location where the
 #'                                 exposure data is available.  If exposureTable = DRUG_ERA,
 #'                                 exposureSchema is not used by assumed to be cdmSchema.  Requires
@@ -83,16 +81,45 @@
 #'                                 counts, but larger number means more shrinkage. default is 0.5
 #' @param icPercentile             The lower bound of the credibility interval for the IC values
 #'                                 (IClow). default is 0.025,
+#' @param returnSQL                Set to True to also return the rendered sql-query which creates the 
+#'                                 four central temptables, useful for debugging purposes.
 #'
-#' @examples   # Create exposureOutcomePairs for multiple exposures and multiple outcomes, as well as for single rows
+#'
+#'
+#' @examples   
 #' 
-#' grouping_df <- cbind.data.frame("exposureGrouping"=1, "outcomeGrouping"=1, setNames(expand.grid(c(40170549, 1321636), c(321389,   73609,  134401)), c("exposureId", "outcomeId")))
-#' single_df <- cbind.data.frame("exposureGrouping"=2:3, "outcomeGrouping"=2:3, "exposureId"=c(40170549, 1321636), "outcomeId"=c(321389,   73609))
-#' exposureOutcomePairs <- rbind.data.frame(grouping_df, single_df)
+#' # Collect data with a specific "background" (we don't use the default - i.e. the entire database as a baseline) 
+#' 
+#' exposureOutcomePairs <- cbind.data.frame("exposureId"=c(40170549), "outcomeId"=c(321389))
+#' exposure_background <- c(1321636, 40167333, 711452, 40173533, 981774, 19030860, 19037401, 925102, 1337068) 
+#' outcome_background <- c(73609,  134401,   74725,  375251,  199063,  381580, 4046804,  442094,  436883)
 #'           
 #'  output <- getChronographData(connectionDetails = connectionDetails,
 #'                               oracleTempSchema = NULL,
-#'                               cdmDatabaseSchema = "synpuf5pct_20180710",
+#'                               cdmDatabaseSchema = "YOUR_DATABASE_SCHEMA",
+#'                               cdmVersion = "5",
+#'                               exposureIds = exposure_background,
+#'                               outcomeIds = outcome_background,
+#'                               exposureOutcomePairs = exposureOutcomePairs,
+#'                               exposureDatabaseSchema = cdmDatabaseSchema,
+#'                               exposureTable = "drug_era",
+#'                               outcomeDatabaseSchema = cdmDatabaseSchema,
+#'                               outcomeTable = "condition_era",
+#'                               shrinkage = 0.5,
+#'                               icPercentile = 0.025)
+#'                               
+#'  plot(IcTemporalPatternDiscovery::plotChronograph(data=output, exposureId = 40170549, outcomeId = 321389, title="Exposure 40170549 vs Outcome 321389"))
+#' 
+#' 
+#' # Collect data for multiple exposures and multiple outcomes (grouping 1), as well as for single rows (grouping 2 and 3)
+#' 
+#' grouping_df <- cbind.data.frame("grouping"=1, setNames(expand.grid(c(40170549, 1321636), c(321389,   73609,  134401)), c("exposureId", "outcomeId")))
+#' single_combinations_df <- cbind.data.frame("grouping"=2:3, "exposureId"=c(40170549, 1321636), "outcomeId"=c(321389,   73609))
+#' exposureOutcomePairs <- rbind.data.frame(grouping_df, single_combinations_df)
+#'           
+#'  output <- getChronographData(connectionDetails = connectionDetails,
+#'                               oracleTempSchema = NULL,
+#'                               cdmDatabaseSchema = "YOUR_DATABASE_SCHEMA",
 #'                               cdmVersion = "5",
 #'                               exposureOutcomePairs = exposureOutcomePairs,
 #'                               exposureDatabaseSchema = cdmDatabaseSchema,
@@ -100,17 +127,21 @@
 #'                               outcomeDatabaseSchema = cdmDatabaseSchema,
 #'                               outcomeTable = "condition_era",
 #'                               shrinkage = 0.5,
-#'                               icPercentile = 0.025)#
+#'                               icPercentile = 0.025)
 #'  
 #'  plot(IcTemporalPatternDiscovery::plotChronograph(data=output, exposureGrouping = 1, outcomeGrouping = 1, title="Exposures 40170549, 1321636 vs Outcomes 321389, 73609, 134401"))
+#'  
 #'
-#' @details  When mapping vocabularies e.g. medDRA to SNOMED, it is possible that multiple terms are found. To create a chronograph for the joint SNOMED-terms, 
-#'           data collected from server for single exposures and outcomes can not be used for multiple exposures or multiple outcomes, 
-#'           as the same person might be counted multiple times. You should instead specify grouping columns in the 
-#'           exposureOutcomePairs-argument table. 
+#'
+#' @details  When mapping vocabularies e.g. from medDRA to SNOMED, it is possible that the mapping produces multiple terms. To create a chronograph for the joint SNOMED-terms, 
+#'           data collected from server for single exposures and outcomes should not be used for multiple exposures or multiple outcomes, 
+#'           as the same person might be counted multiple times. You should instead specify groupings in a column named "grouping" in the 
+#'           exposureOutcomePairs-argument table. See the examples. 
 #' @return
-#' A data frame with observed and expected outcome counts in periods relative to the exposure
+#' If returnSQL is False: A dataframe named results with observed and expected outcome counts in periods relative to the exposure
 #' initiation date, for each outcome and exposure.
+#' If returnSQL is True: A list containing 1) data frame results 2) The sql-query that creates the four central temptables, for debugging
+#' purposes. 
 #'
 #' @export
 getChronographData <- function(connectionDetails,
@@ -125,7 +156,8 @@ getChronographData <- function(connectionDetails,
                                outcomeDatabaseSchema = cdmDatabaseSchema,
                                outcomeTable = "condition_era",
                                shrinkage = 0.5,
-                               icPercentile = 0.025) {
+                               icPercentile = 0.025,
+                               returnSQL = F) {
   start <- Sys.time()
   
   # Convert parameter names to lower case ----
@@ -183,6 +215,17 @@ getChronographData <- function(connectionDetails,
                                  tempTable = TRUE,
                                  oracleTempSchema = oracleTempSchema)
   
+  # Check whether exposureOutcomePairs was passed with a grouping variable.
+  grouping_flag <- any(grepl("group", colnames(exposureOutcomePairs), ignore.case = T))
+  
+  # In that case, grouping is copied into two new columns. 
+  if(grouping_flag){
+    exposureOutcomePairs$exposureGrouping = exposureOutcomePairs$grouping
+    exposureOutcomePairs$outcomeGrouping = exposureOutcomePairs$grouping
+    exposureOutcomePairs$grouping = NULL
+  }
+  
+  
   # Create an exposure-outcome-tempdb if exposureOutcomePairs is not null ----
   if (is.null(exposureOutcomePairs)) {
     hasPairs <- FALSE
@@ -197,10 +240,7 @@ getChronographData <- function(connectionDetails,
   }
   
   
-  # If exposureOutcomePairs has groupings, run special version of createChronographData
-
-  grouping_flag <- any(grepl("group", colnames(exposureOutcomePairs), ignore.case = T))
-  
+  # If exposureOutcomePairs has grouping, run special version of createChronographData
   sql_filename <- ifelse(grouping_flag, 
                          "CreateChronographDataWithGroupings.sql",
                          "CreateChronographData.sql")
@@ -226,6 +266,8 @@ getChronographData <- function(connectionDetails,
                                            exposure_ids = exposureIds,
                                            outcome_ids = outcomeIds,
                                            has_pairs = hasPairs)
+  
+  sql_query_to_return <- sql
   ParallelLogger::logInfo("Creating counts on server")
   DatabaseConnector::executeSql(conn, sql)
   
@@ -291,9 +333,16 @@ getChronographData <- function(connectionDetails,
   result$icLow <- ic$ic_low
   result$icHigh <- ic$ic_high
   
+  sql <- sql_query_to_return
+  
   delta <- Sys.time() - start
   ParallelLogger::logInfo(paste("Getting data took", signif(delta, 3), attr(delta, "units")))
-  return(result)
+  
+  if(returnSQL){
+  return(list("result"=result, "sql"=writeLines(sql)))
+  } else {
+    return(result)
+  }
 }
 
 #' @title

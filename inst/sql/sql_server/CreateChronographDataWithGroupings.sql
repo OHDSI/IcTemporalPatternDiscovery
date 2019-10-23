@@ -2,10 +2,11 @@
 --   i.e. this code is called when temptable #exposure_outcome_ids contain an exposure grouping, an outcome 
 --   grouping or both. This grouping allows several e.g. snomed- and rxnorm-codes to be used for calculating
 --   the observed, in a single chronograph-plot.
+--   Note that has_pairs is always true, when this script is used.  
 
 {DEFAULT @exposure_ids = ''}
 {DEFAULT @outcome_ids = ''}
-{DEFAULT @has_pairs = FALSE}
+{DEFAULT @has_pairs = TRUE}
 {DEFAULT @cdm_database_schema = 'cdm.dbo'}
 {DEFAULT @exposure_database_schema = 'cdm.dbo'}
 {DEFAULT @exposure_table = 'drug_era'}
@@ -41,16 +42,8 @@ FROM
 (
 SELECT exp_out_ids.exposure_grouping AS grouping,
     period.period_id
-FROM       (SELECT DISTINCT exposure_grouping FROM #exposure_outcome_ids) exp_out_ids
+    FROM       (SELECT DISTINCT exposure_grouping, exposure_id FROM #exposure_outcome_ids) exp_out_ids
 CROSS JOIN (SELECT DISTINCT period_id FROM #period) period
-WHERE 1=1
-{@exposure_ids != ''} ? {
-	AND exposure.@exposure_id_field IN (@exposure_ids)
-} : {
- {@has_pairs} ? {
--- 	AND exposure.@exposure_id_field IN (SELECT DISTINCT exposure_id FROM #exposure_outcome_ids)
- }
-}
 GROUP BY exp_out_ids.exposure_grouping, period.period_id
 ) a
 LEFT JOIN
@@ -102,7 +95,6 @@ GROUP BY period.period_id;
 
 ---------------- THIS PART CREATES #EXPOSURE_OUTCOME
 -- Count number of people with the outcome grouping relative to each exposure grouping (within same observation period)	
-
 SELECT a.exposure_grouping
      , a.outcome_grouping
 	 , a.period_id
@@ -113,7 +105,7 @@ FROM
 SELECT exposure.exposure_grouping AS exposure_grouping,
 	   exp_out_ids.outcome_grouping AS outcome_grouping,
     period.period_id
-FROM       (SELECT DISTINCT exposure_grouping FROM #exposure_outcome_ids) exposure
+FROM       (SELECT DISTINCT exposure_grouping, exposure_id, outcome_id FROM #exposure_outcome_ids) exposure
 CROSS JOIN (SELECT DISTINCT period_id          FROM #period) period
 CROSS JOIN (SELECT DISTINCT @outcome_id_field  FROM @outcome_database_schema.@outcome_table outcome) outcome
 {@has_pairs} ? {
@@ -127,7 +119,7 @@ WHERE 1=1
 	AND exposure.@exposure_id_field IN (@exposure_ids)
 }	
 {@outcome_ids != ''} ? {
-	AND outcome.@outcome_id_field IN (@outcome_ids)
+  AND outcome.@outcome_id_field IN (@outcome_ids)
 }
 }
 GROUP BY exposure.exposure_grouping,
@@ -182,14 +174,10 @@ SELECT a.grouping
 INTO #outcome
 FROM
 (
-SELECT exp_out_ids.outcome_grouping AS grouping,
+SELECT DISTINCT exp_out_ids.outcome_grouping AS grouping,
     period.period_id
-FROM       (SELECT DISTINCT outcome_grouping FROM #exposure_outcome_ids) exp_out_ids
+FROM       (SELECT DISTINCT outcome_grouping, outcome_id FROM #exposure_outcome_ids) exp_out_ids
 CROSS JOIN (SELECT DISTINCT period_id FROM #period) period
-WHERE 1=1
-{@outcome_ids != ''} ? {
-	AND outcome.@outcome_id_field IN (@outcome_ids)
-}
 ) a
 LEFT JOIN
 (
@@ -220,7 +208,7 @@ WHERE DATEADD(DAY, period.period_start, exposure.@exposure_start_field) <= outco
 	AND outcome.@outcome_id_field IN (@outcome_ids)
 }	: {
  {@has_pairs} ? {
- 	AND outcome.condition_concept_id IN (SELECT DISTINCT outcome_id FROM #exposure_outcome_ids)
+ 	AND outcome.@outcome_id_field IN (SELECT DISTINCT outcome_id FROM #exposure_outcome_ids)
 }}
 GROUP BY exp_out_ids.outcome_grouping,
     period.period_id
