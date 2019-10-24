@@ -4,8 +4,8 @@
 \alias{plotChronograph}
 \title{Plot a chronograph}
 \usage{
-plotChronograph(data, exposureId, outcomeId, exposureGrouping = NULL,
-  outcomeGrouping = NULL, title = NULL, fileName = NULL)
+plotChronograph(data, exposureId, outcomeId, grouping = NULL,
+  title = NULL, fileName = NULL)
 }
 \arguments{
 \item{data}{Data as generated using the \code{getChronographData} function.}
@@ -13,6 +13,8 @@ plotChronograph(data, exposureId, outcomeId, exposureGrouping = NULL,
 \item{exposureId}{The unique ID identifying the exposure to plot.}
 
 \item{outcomeId}{The unique ID identifying the outcome to plot.}
+
+\item{grouping}{The unique grouping ID, in case \code{getChronographData} was called with groupings.}
 
 \item{title}{The title to show above the plot.}
 
