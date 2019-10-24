@@ -322,6 +322,16 @@ getChronographData <- function(connectionDetails,
   result <- merge(all, exposure)
   result <- merge(result, outcome)
   result <- merge(exposureOutcome, result)
+  
+  # Clean up the double grouping-variables
+  if(all(result$outcomeGrouping == result$exposureGrouping)){
+    result$grouping = result$outcomeGrouping
+    result$exposureGrouping = NULL
+    result$outcomeGrouping = NULL
+  } else {
+    stop("The main sql-script has returned invalid grouping-variables.")
+  }
+  
   result$expectedCount <- result$observedCount * result$allOutcomeCount/result$allObservedCount
   ic <- IcTemporalPatternDiscovery:::ic(obs = result$outcomeCount,
            exp = result$expectedCount,
@@ -356,6 +366,7 @@ getChronographData <- function(connectionDetails,
 #' @param data         Data as generated using the \code{getChronographData} function.
 #' @param exposureId   The unique ID identifying the exposure to plot.
 #' @param outcomeId    The unique ID identifying the outcome to plot.
+#' @param grouping     The unique grouping ID, in case \code{getChronographData} was called with groupings.
 #' @param title        The title to show above the plot.
 #' @param fileName     Name of the file where the plot should be saved, for example 'plot.png'. See the
 #'                     function \code{ggsave} in the ggplot2 package for supported file formats.
@@ -366,10 +377,10 @@ getChronographData <- function(connectionDetails,
 #' 361-387.
 #'
 #' @export
-plotChronograph <- function(data, exposureId, outcomeId, exposureGrouping=NULL, outcomeGrouping=NULL, title = NULL, fileName = NULL) {
+plotChronograph <- function(data, exposureId, outcomeId, grouping=NULL, title = NULL, fileName = NULL) {
   
-  if(all(!is.null(c(exposureGrouping, outcomeGrouping)))){
-    data <- data[data$exposureGrouping %in% exposureGrouping & data$outcomeGrouping %in% outcomeGrouping,]
+  if(all(!is.null(grouping))){
+    data <- data[data$grouping %in% grouping,]
   } else {
     data <- data[data$exposureId == exposureId & data$outcomeId == outcomeId, ]
   }

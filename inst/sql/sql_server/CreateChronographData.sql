@@ -13,7 +13,7 @@
 {DEFAULT @outcome_start_field = 'condition_era_start_date'}
 {DEFAULT @outcome_person_id_field = 'person_id'}
 
--- Drop tables if they exists
+-- Drop tables if they exists 
 IF OBJECT_ID('tempdb..#exposure', 'U') IS NOT NULL
 	DROP TABLE #exposure;
 
