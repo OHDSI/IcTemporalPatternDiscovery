@@ -5,7 +5,6 @@
 extras
 ^\.git
 man-roxygen
-deploy.sh
 compare_versions
 _pkgdown.yml
 docs
