@@ -24,7 +24,7 @@ function \code{createConnectionDetails} in the
 temporary tables to be managed. Requires create/insert permissions
 to this database.}
 
-\item{cdmVersion}{Define the OMOP CDM version used: currently supports "5".}
+\item{cdmVersion}{Define the OMOP CDM version used: currently supports "5" and "6".}
 
 \item{exposureIds}{A vector of IDs identifying the exposures to include when computing 
 the expected count, i.e. the supplied IDs will define the 
