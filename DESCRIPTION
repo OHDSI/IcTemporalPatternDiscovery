@@ -19,6 +19,7 @@ Imports:
 	SqlRender,
 	ParallelLogger,
 	ggplot2,
-	gridExtra
+	gridExtra,
+	shiny
 License: Apache License 2.0
 RoxygenNote: 6.1.1

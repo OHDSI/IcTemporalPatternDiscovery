@@ -31,7 +31,7 @@
 #' @param oracleTempSchema         For Oracle only: the name of the database schema where you want all
 #'                                 temporary tables to be managed. Requires create/insert permissions
 #'                                 to this database.
-#' @param cdmVersion               Define the OMOP CDM version used: currently supports "5".
+#' @param cdmVersion               Define the OMOP CDM version used: currently supports "5" and "6".
 #' @param exposureIds              A vector of IDs identifying the exposures to include when computing 
 #'                                 the expected count, i.e. the supplied IDs will define the 
 #'                                 background population in the chronograph. If the
@@ -168,6 +168,11 @@ getChronographData <- function(connectionDetails,
   # assign additional parameter values
   if (exposureTable == "drug_era") {
     exposureStartField <- "drug_era_start_date"
+    
+    # If version 6, drug_era_start is now drug_era_starttime:
+    if(cdmVersion == 6) {
+      exposureStartField = "drug_era_start_datetime"
+    }
     exposureIdField <- "drug_concept_id"
     exposurePersonIdField <- "person_id"
   } else {
@@ -177,10 +182,20 @@ getChronographData <- function(connectionDetails,
   }
   if (outcomeTable == "condition_era") {
     outcomeStartField <- "condition_era_start_date"
+    
+    # If version 6, condition_era_start is now drug_era_starttime:
+    if(cdmVersion == 6) {
+      outcomeStartField = "condition_era_start_datetime"
+    }
     outcomeIdField <- "condition_concept_id"
     outcomePersonIdField <- "person_id"
   } else {
     outcomeStartField <- "cohort_start_date"
+
+    # If version 6, drug_era_start is now drug_era_starttime:
+    if(cdmVersion == 6) {
+      outcomeStartField = "cohort_start_datetime"
+    }
     outcomeIdField <- "cohort_definition_id"
     outcomePersonIdField <- "subject_id"
   }
@@ -244,6 +259,8 @@ getChronographData <- function(connectionDetails,
   sql_filename <- ifelse(grouping_flag, 
                          "CreateChronographDataWithGroupings.sql",
                          "CreateChronographData.sql")
+  
+
   
   
   # run SQL-script CreateChronographData, where several temptables (#outcome, #exposure, ...), ----
