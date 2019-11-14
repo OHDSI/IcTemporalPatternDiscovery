@@ -350,7 +350,16 @@ getChronographData <- function(connectionDetails,
   }
   
   result$expectedCount <- result$observedCount * result$allOutcomeCount/result$allObservedCount
-  ic <- IcTemporalPatternDiscovery:::ic(obs = result$outcomeCount,
+  
+  ic_calc <- function(obs, exp, shape.add = 0.5, rate.add = 0.5, percentile = 0.025) {
+    ic <- log2((obs + shape.add)/(exp + rate.add))
+    ic_low <- log2(qgamma(p = percentile, shape = (obs + shape.add), rate = (exp + rate.add)))
+    ic_high <- log2(qgamma(p = (1 - percentile), shape = (obs + shape.add), rate = (exp + rate.add)))
+    return(list(ic = ic, ic_low = ic_low, ic_high = ic_high))
+  }
+  
+  
+  ic <- ic_calc(obs = result$outcomeCount,
            exp = result$expectedCount,
            shape.add = shrinkage,
            rate.add = shrinkage,
