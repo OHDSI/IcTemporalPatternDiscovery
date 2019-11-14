@@ -4,14 +4,22 @@
 \alias{getDbIctpdData}
 \title{Get ICTPD counts from database}
 \usage{
-getDbIctpdData(connectionDetails, cdmDatabaseSchema,
-  oracleTempSchema = cdmDatabaseSchema, cdmVersion = "5",
-  exposureOutcomePairs, exposureDatabaseSchema = cdmDatabaseSchema,
+getDbIctpdData(
+  connectionDetails,
+  cdmDatabaseSchema,
+  oracleTempSchema = cdmDatabaseSchema,
+  cdmVersion = "5",
+  exposureOutcomePairs,
+  exposureDatabaseSchema = cdmDatabaseSchema,
   exposureTable = "drug_era",
   outcomeDatabaseSchema = cdmDatabaseSchema,
-  outcomeTable = "condition_era", controlPeriodStart = -1080,
-  controlPeriodEnd = -361, riskPeriodStart = 1, riskPeriodEnd = 30,
-  censor = FALSE)
+  outcomeTable = "condition_era",
+  controlPeriodStart = -1080,
+  controlPeriodEnd = -361,
+  riskPeriodStart = 1,
+  riskPeriodEnd = 30,
+  censor = FALSE
+)
 }
 \arguments{
 \item{connectionDetails}{An R object of type \code{ConnectionDetails} created using

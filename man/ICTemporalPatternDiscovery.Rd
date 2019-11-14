@@ -3,7 +3,6 @@
 \docType{package}
 \name{ICTemporalPatternDiscovery}
 \alias{ICTemporalPatternDiscovery}
-\alias{ICTemporalPatternDiscovery-package}
 \title{ICTemporalPatternDiscovery}
 \description{
 ICTemporalPatternDiscovery

@@ -4,14 +4,22 @@
 \alias{getChronographData}
 \title{Get the data for chronographs from the server.}
 \usage{
-getChronographData(connectionDetails, cdmDatabaseSchema,
-  oracleTempSchema = NULL, cdmVersion = "5", exposureIds = c(),
-  outcomeIds = c(), exposureOutcomePairs = NULL,
+getChronographData(
+  connectionDetails,
+  cdmDatabaseSchema,
+  oracleTempSchema = NULL,
+  cdmVersion = "5",
+  exposureIds = c(),
+  outcomeIds = c(),
+  exposureOutcomePairs = NULL,
   exposureDatabaseSchema = cdmDatabaseSchema,
   exposureTable = "drug_era",
   outcomeDatabaseSchema = cdmDatabaseSchema,
-  outcomeTable = "condition_era", shrinkage = 0.5,
-  icPercentile = 0.025, returnSQL = F)
+  outcomeTable = "condition_era",
+  shrinkage = 0.5,
+  icPercentile = 0.025,
+  returnSQL = F
+)
 }
 \arguments{
 \item{connectionDetails}{An R object of type \code{ConnectionDetails} created using the

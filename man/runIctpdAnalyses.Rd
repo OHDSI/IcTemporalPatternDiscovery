@@ -4,14 +4,21 @@
 \alias{runIctpdAnalyses}
 \title{Run a list of analyses}
 \usage{
-runIctpdAnalyses(connectionDetails, cdmDatabaseSchema,
+runIctpdAnalyses(
+  connectionDetails,
+  cdmDatabaseSchema,
   oracleTempSchema = cdmDatabaseSchema,
   exposureDatabaseSchema = cdmDatabaseSchema,
   exposureTable = "drug_era",
   outcomeDatabaseSchema = cdmDatabaseSchema,
-  outcomeTable = "condition_era", cdmVersion = 4,
-  outputFolder = "./IctpdOutput", ictpdAnalysisList, exposureOutcomeList,
-  getDbIctpdDataThreads = 1, calculateStatisticsIcThreads = 1)
+  outcomeTable = "condition_era",
+  cdmVersion = 4,
+  outputFolder = "./IctpdOutput",
+  ictpdAnalysisList,
+  exposureOutcomeList,
+  getDbIctpdDataThreads = 1,
+  calculateStatisticsIcThreads = 1
+)
 }
 \arguments{
 \item{connectionDetails}{An R object of type \code{connectionDetails} created using the

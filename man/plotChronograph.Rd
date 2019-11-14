@@ -4,8 +4,14 @@
 \alias{plotChronograph}
 \title{Plot a chronograph}
 \usage{
-plotChronograph(data, exposureId, outcomeId, grouping = NULL,
-  title = NULL, fileName = NULL)
+plotChronograph(
+  data,
+  exposureId,
+  outcomeId,
+  grouping = NULL,
+  title = NULL,
+  fileName = NULL
+)
 }
 \arguments{
 \item{data}{Data as generated using the \code{getChronographData} function.}

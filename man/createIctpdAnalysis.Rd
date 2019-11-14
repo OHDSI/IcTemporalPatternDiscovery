@@ -4,9 +4,14 @@
 \alias{createIctpdAnalysis}
 \title{Create ICTPD analysis details}
 \usage{
-createIctpdAnalysis(analysisId = 1, description = "",
-  exposureType = NULL, outcomeType = NULL, getDbIctpdDataArgs,
-  calculateStatisticsIcArgs)
+createIctpdAnalysis(
+  analysisId = 1,
+  description = "",
+  exposureType = NULL,
+  outcomeType = NULL,
+  getDbIctpdDataArgs,
+  calculateStatisticsIcArgs
+)
 }
 \arguments{
 \item{analysisId}{A unique identifier that can later be used to identify the
