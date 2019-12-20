@@ -10,6 +10,8 @@
 {DEFAULT @outcome_id_field = 'condition_concept_id'}
 {DEFAULT @outcome_person_id_field = 'person_id'}
 
+-- This is not working as intended.
+
 -- N with exposure
 UPDATE #binratio set N_exposure = (SELECT count(distinct @exposure_person_id_field) from @outcome_database_schema.@outcome_table outcome
 WHERE outcome.@exposure_person_id_field in (select distinct @exposure_person_id_field from @exposure_database_schema.@exposure_table  WHERE @exposure_id_field in (@exposure_ids)))
