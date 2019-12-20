@@ -1,4 +1,4 @@
-language: R
+language: r
 cache: packages
 sudo: false
 
@@ -16,6 +16,8 @@ r_github_packages:
   - OHDSI/DatabaseConnectorJars
   - OHDSI/DatabaseConnector
   - OHDSI/ParallelLogger
+  
+latex: false
 
 before_script:
   - export PKG_NAME=$(Rscript -e 'cat(paste0(devtools::as.package(".")$package))')

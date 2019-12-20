@@ -1,3 +1,7 @@
+-- It is known that (2019-12-02) master branch produces an #exposure with slightly fewer rows, as 0:s are not kept.
+-- That code was adapted by Ola, but was apparaently not pushed to the master branch. I've noted this at the github-repo
+-- for the master branch of this package. /Oskar
+
 {DEFAULT @exposure_ids = ''}
 {DEFAULT @outcome_ids = ''}
 {DEFAULT @has_pairs = FALSE}
@@ -12,6 +16,7 @@
 {DEFAULT @outcome_id_field = 'condition_concept_id'}
 {DEFAULT @outcome_start_field = 'condition_era_start_date'}
 {DEFAULT @outcome_person_id_field = 'person_id'}
+{DEFAULT @random_sample_flag = FALSE}
 
 -- Drop tables, if they exists 
 IF OBJECT_ID('tempdb..#exposure', 'U') IS NOT NULL
@@ -24,10 +29,17 @@ IF OBJECT_ID('tempdb..#exposure_outcome', 'U') IS NOT NULL
 	DROP TABLE #exposure_outcome;
 
 IF OBJECT_ID('tempdb..#outcome', 'U') IS NOT NULL
-	DROP TABLE #outcome;		
+	DROP TABLE #outcome;
 
 ---------------- THIS IS PART 1
--- Count number of reports per drug ("exposure")	
+-- Count number of exposures, e.g.:	
+--          exposureId  periodId  observedCount
+--              701322      -36             1
+--              701322      -35             1
+--              701322      -34             1
+--              701322      -33             1
+--              701322      -32             1
+
 SELECT a.exposure_id, 
        a.period_id, 
        CASE WHEN b.observed_count IS NULL THEN 0 ELSE b.observed_count END AS observed_count
@@ -59,6 +71,10 @@ INNER JOIN @cdm_database_schema.observation_period
 	ON exposure.@exposure_person_id_field = observation_period.person_id
 		AND exposure.@exposure_start_field >= observation_period_start_date
 		AND exposure.@exposure_start_field <= observation_period_end_date
+{@random_sample_flag} ? {
+LEFT JOIN #random_sample random_sample
+  ON exposure.@exposure_person_id_field = random_sample.person_id
+}
 WHERE DATEADD(DAY, period.period_start, exposure.@exposure_start_field) <= observation_period_end_date
 	AND DATEADD(DAY, period.period_end, exposure.@exposure_start_field) >= observation_period_start_date
 {@exposure_ids != ''} ? {
@@ -67,14 +83,27 @@ WHERE DATEADD(DAY, period.period_start, exposure.@exposure_start_field) <= obser
  {@has_pairs} ? {
  	AND exposure.@exposure_id_field IN (SELECT DISTINCT exposure_id FROM #exposure_outcome_ids)
  }
-}	
-GROUP BY exposure.@exposure_id_field, period.period_id -- NEED TO CHANGE CODE HERE
+}
+{@random_sample_flag} ? {
+ AND random_sample.included like 'TRUE'
+}
+GROUP BY exposure.@exposure_id_field, period.period_id 
+{@random_sample_flag} ? {
+ , random_sample.included
+}
 ) b
     ON  a.exposure_id = b.exposure_id
     AND a.period_id   = b.period_id;
 	
 ---------------- THIS IS PART 2
--- Count reports for all drugs	
+-- Count reports for all drugs, i.e. 
+--   periodId allObservedCount
+--       -36               71
+--       -35               71
+--       -34               71
+--       -33               71
+--       -32               71
+
 SELECT period.period_id,
 	COUNT(*) AS all_observed_count
 INTO #all
@@ -84,15 +113,33 @@ INNER JOIN @cdm_database_schema.observation_period
 	ON exposure.@exposure_person_id_field = observation_period.person_id
 		AND exposure.@exposure_start_field >= observation_period_start_date
 		AND exposure.@exposure_start_field <= observation_period_end_date
+{@random_sample_flag} ? {
+LEFT JOIN #random_sample random_sample
+  ON exposure.@exposure_person_id_field = random_sample.person_id
+}
 WHERE DATEADD(DAY, period.period_start, exposure.@exposure_start_field) <= observation_period_end_date
 	AND DATEADD(DAY, period.period_end, exposure.@exposure_start_field) >= observation_period_start_date
 {@exposure_ids != ''} ? {
 	AND exposure.@exposure_id_field IN (@exposure_ids)
 } 
-GROUP BY period.period_id;
+{@random_sample_flag} ? {
+ AND random_sample.included like 'TRUE'
+}
+GROUP BY period.period_id
+{@random_sample_flag} ? {
+ , random_sample.included
+}
+;
 
 ---------------- THIS IS PART 3
--- Count reports of specific reaction ("outcome") for each drug ("exposure") (within same observation period)	
+-- Count reports of specific reaction ("outcome") for each drug ("exposure") (within same observation period), e.g.:	
+-- exposureId outcomeId periodId outcomeCount
+--    1107830   4237458        8            0
+--    1107830   4237458        9            0
+--    1107830   4237458       10            0
+--    1107830   4237458       11            0
+--    1107830   4237458       12            0
+
 SELECT a.exposure_id
      , a.outcome_id
 	 , a.period_id
@@ -146,6 +193,11 @@ INNER JOIN #exposure_outcome_ids exposure_outcome_ids
 	ON exposure.@exposure_id_field = exposure_outcome_ids.exposure_id
 		AND outcome.@outcome_id_field = exposure_outcome_ids.outcome_id
 }
+{@random_sample_flag} ? {
+LEFT JOIN #random_sample random_sample
+  ON exposure.@exposure_person_id_field = random_sample.person_id
+  ON outcome.@outcome_person_id_field = exposure_outcome_ids.person_id
+}
 WHERE DATEADD(DAY, period.period_start, exposure.@exposure_start_field) <= outcome.@outcome_start_field
 	AND DATEADD(DAY, period.period_end, exposure.@exposure_start_field) >= outcome.@outcome_start_field
 {!@has_pairs} ? {
@@ -156,19 +208,32 @@ WHERE DATEADD(DAY, period.period_start, exposure.@exposure_start_field) <= outco
 	AND outcome.@outcome_id_field IN (@outcome_ids)
 }
 }
+{@random_sample_flag} ? {
+ AND random_sample.included like 'TRUE'
+}
 GROUP BY exposure.@exposure_id_field,
 	outcome.@outcome_id_field,
     period.period_id
+    {@random_sample_flag} ? {
+ , random_sample.included
+}
 ) b
     ON  a.exposure_id = b.exposure_id
     AND a.outcome_id  = b.outcome_id
     AND a.period_id   = b.period_id;
 	
 -- THIS IS PART 4
--- Count reports with specific reaction (outcome) for all drugs (exposures)	(within same observation period)
-SELECT a.outcome_id
-	 , a.period_id
-	 , CASE WHEN b.all_outcome_count IS NULL THEN 0 ELSE b.all_outcome_count END AS all_outcome_count
+-- Count reports with specific reaction (outcome) for all drugs (exposures)	(within same observation period), e.g.
+--      outcomeId   periodId allOutcomeCount
+--         78272      -36               0
+--         78272      -35               0
+--         78272      -34               1
+--         78272      -33               0
+--         78272      -32               0
+
+SELECT a.outcome_id, 
+       a.period_id, 
+       CASE WHEN b.all_outcome_count IS NULL THEN 0 ELSE b.all_outcome_count END AS all_outcome_count
 INTO #outcome
 FROM
 (
@@ -197,6 +262,10 @@ INNER JOIN @cdm_database_schema.observation_period
 		AND outcome.@outcome_person_id_field = observation_period.person_id
 		AND outcome.@outcome_start_field >= observation_period_start_date
 		AND outcome.@outcome_start_field <= observation_period_end_date	
+{@random_sample_flag} ? {
+LEFT JOIN #random_sample random_sample
+  ON exposure.@exposure_person_id_field = random_sample.@exposure_person_id_field
+}
 WHERE DATEADD(DAY, period.period_start, exposure.@exposure_start_field) <= outcome.@outcome_start_field
 	AND DATEADD(DAY, period.period_end, exposure.@exposure_start_field) >= outcome.@outcome_start_field
 {@exposure_ids != ''} ? {
@@ -210,6 +279,9 @@ WHERE DATEADD(DAY, period.period_start, exposure.@exposure_start_field) <= outco
 }}
 GROUP BY outcome.@outcome_id_field,
     period.period_id
+        {@random_sample_flag} ? {
+ , random_sample.included
+}
 ) b
     ON  a.outcome_id  = b.outcome_id
     AND a.period_id   = b.period_id;

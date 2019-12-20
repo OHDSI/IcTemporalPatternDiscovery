@@ -18,7 +18,7 @@ getChronographData(
   outcomeTable = "condition_era",
   shrinkage = 0.5,
   icPercentile = 0.025,
-  returnSQL = F
+  randomSample = NULL
 )
 }
 \arguments{
@@ -64,7 +64,8 @@ To collect data for plotting multiple exposures and outcomes in a single
          \itemize{
            \item {"grouping" with the same value at each row with an exposure and exposure to
                  include in a grouping. See details and examples below.}
-}}
+}
+If no grouping column is passed, a grouping column of 1:nrow(exposureOutcomePairs) is created.}
 
 \item{exposureDatabaseSchema}{The name of the database schema that is the location where the
 exposure data is available.  If exposureTable = DRUG_ERA,
@@ -92,32 +93,45 @@ counts, but larger number means more shrinkage. default is 0.5}
 \item{icPercentile}{The lower bound of the credibility interval for the IC values
 (IClow). default is 0.025,}
 
-\item{returnSQL}{Set to True to also return the rendered sql-query which creates the 
-four central temptables, useful for debugging purposes.}
+\item{randomSample}{The chronograph can, if time is an issue, be run on a random subset of 
+the database with sample size specified by this parameter. If NULL, 
+all records are used.}
+
+\item{patientLevel}{Defaults to TRUE. Estimation can be made on era-level or patient-level. 
+The era-level implies that patients with more drugs influences the 
+estimated expected count more than patients with fewer eras, while 
+patient-level estimation choses one era randomly for each patient. 
+Era-level uses all available information, while patient-level only 
+use one of several possible eras. A detailed description is planned in
+a vignette.}
 }
 \value{
-If returnSQL is False: A dataframe named results with observed and expected outcome counts in periods relative to the exposure
+A dataframe named results with observed and expected outcome counts in periods relative to the exposure
 initiation date, for each outcome and exposure.
-If returnSQL is True: A list containing 1) data frame results 2) The sql-query that creates the four central temptables, for debugging
-purposes.
 }
 \description{
 Get the data for creating chronographs from the server.
 }
 \details{
-When mapping vocabularies e.g. from medDRA to SNOMED, it is possible that the mapping produces multiple terms. To create a chronograph for the joint SNOMED-terms, 
-          data collected from server for single exposures and outcomes should not be used for multiple exposures or multiple outcomes, 
-          as the same person might be counted multiple times. You should instead specify groupings in a column named "grouping" in the 
-          exposureOutcomePairs-argument table. See the examples.
+The chronograph displays the observed and the expected number of persons with the event over time. The approach can be 
+described as self-controlled in the sense that the observed number of persons with the reaction before and after the exposure can be
+compared. But the chronograph also allows comparison against the expected, which could be all persons with a drug initiation, or some
+subset of those, as controlled by the outcomeIds and exposureIds. 
+
+When mapping vocabularies e.g. from medDRA to SNOMED, it is possible that the mapping produces multiple terms. To create a 
+chronograph for the joint SNOMED-terms, data collected from server for single exposures and outcomes cannot not be aggregated later for
+multiple exposures or multiple outcomes, as the same person might be counted multiple times. You should instead pass an 
+exposureOutcomePairs-table, when the interest lies in a chronograph based on several SNOMED or RxNormExtended-terms.
 }
 \examples{
   
 
-# Collect data with a specific "background" (we don't use the default - i.e. the entire database as a baseline) 
+# A chronograph-call, which collects data for an exposure-outcome-pair, and calculates the expected based on
+the specified exposure_background. 
 
 exposureOutcomePairs <- cbind.data.frame("exposureId"=c(40170549), "outcomeId"=c(321389))
-exposure_background <- c(1321636, 40167333, 711452, 40173533, 981774, 19030860, 19037401, 925102, 1337068) 
-outcome_background <- c(73609,  134401,   74725,  375251,  199063,  381580, 4046804,  442094,  436883)
+exposure_background <- c(1321636, 40167333, 711452, 40173533, 981774, 19030860, 19037401, 925102, 1337068)
+outcome_background <- c(321389)
           
  output <- getChronographData(connectionDetails = connectionDetails,
                               oracleTempSchema = NULL,
@@ -131,16 +145,17 @@ outcome_background <- c(73609,  134401,   74725,  375251,  199063,  381580, 4046
                               outcomeDatabaseSchema = cdmDatabaseSchema,
                               outcomeTable = "condition_era",
                               shrinkage = 0.5,
-                              icPercentile = 0.025)
+                              icPercentile = 0.025
+                              patientLevel = T)
                               
+ # Plot the results:
  plot(IcTemporalPatternDiscovery::plotChronograph(data=output, exposureId = 40170549, outcomeId = 321389, title="Exposure 40170549 vs Outcome 321389"))
 
-
-# Collect data for multiple exposures and multiple outcomes (grouping 1), as well as for single rows (grouping 2 and 3)
-
-grouping_df <- cbind.data.frame("grouping"=1, setNames(expand.grid(c(40170549, 1321636), c(321389,   73609,  134401)), c("exposureId", "outcomeId")))
-single_combinations_df <- cbind.data.frame("grouping"=2:3, "exposureId"=c(40170549, 1321636), "outcomeId"=c(321389,   73609))
-exposureOutcomePairs <- rbind.data.frame(grouping_df, single_combinations_df)
+# By passing a grouping, the chronograph treats all exposures listed in the grouping as if they one and the same.
+# The same applies for the exposures. The background exposure is unspecified and hence all exposures are used, and the background
+# is the outcomes from the grouping.  
+exposureOutcomePairs <- cbind.data.frame("grouping"=1, setNames(expand.grid(c(40170549, 1321636), c(321389,   73609,  134401)), c("exposureId", "outcomeId")))
+                              exposureIds = c(321389,   73609,  134401)
           
  output <- getChronographData(connectionDetails = connectionDetails,
                               oracleTempSchema = NULL,
@@ -152,10 +167,12 @@ exposureOutcomePairs <- rbind.data.frame(grouping_df, single_combinations_df)
                               outcomeDatabaseSchema = cdmDatabaseSchema,
                               outcomeTable = "condition_era",
                               shrinkage = 0.5,
-                              icPercentile = 0.025)
+                              icPercentile = 0.025,
+                              patientLevel = T)
  
- plot(IcTemporalPatternDiscovery::plotChronograph(data=output, exposureGrouping = 1, outcomeGrouping = 1, title="Exposures 40170549, 1321636 vs Outcomes 321389, 73609, 134401"))
- 
+ # Plot the results:
+ plot(IcTemporalPatternDiscovery::plotChronograph(data=output, grouping = 1, 
+ title="Exposures 40170549, 1321636 and Outcomes 321389, 73609, 134401"))
 
 
 }
