@@ -8,3 +8,7 @@ man-roxygen
 compare_versions
 _pkgdown.yml
 docs
+^notes$
+^sandbox$
+^sandbox\.R$
+^Chronograph_old.R$

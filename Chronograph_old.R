@@ -14,13 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TO DO LIST
-# Merge the SQL-scripts so that there is just one.
-# Finish the power calculation/variance-test
-# Need to fix the groupings for the patientLevel-version.
-# Fix the TRAVIS CI - thing.
-# Write a Vignette
-
 #  This script contains the following functions:
 #  getChronographData
 #  plotChronograph
@@ -184,8 +177,9 @@ getChronographData <- function(connectionDetails,
   # Debugging parameters
   library(DatabaseConnector)
   connectionDetails <- createConnectionDetails(dbms = "sql server",  server = "UMCDB06", schema = "OmopCdmSynthea")
-  cdmDatabaseSchema <- c("cdm_synthea10","mini")[1]
+  cdmDatabaseSchema <- "cdm_synthea10"
   cdmVersion = "6"
+  randomSample = NULL
   exposureDatabaseSchema = cdmDatabaseSchema
   exposureTable = "drug_era"
   outcomeDatabaseSchema = cdmDatabaseSchema
@@ -195,32 +189,15 @@ getChronographData <- function(connectionDetails,
   # Birth control and Myocardial Infarction
   exposureIds = 1549786
   outcomeIds = 4329847
-  # # # Acetaminophen and Acute Bronchitis
-  # exposureIds = 1125315
-  # outcomeIds = 260139
-  ##  Remifentanil and PTSD 
-  exposureIds = 19016749
-  outcomeIds = 436676
-  ## Docetaxel and prostate cancer
-  exposureIds = 1315942
-  outcomeIds = 37395648
-  
-  # Asthma
-  outcomeIds=317009
-  
   exposureOutcomePairs = data.frame("exposureId"=exposureIds, "outcomeId"=outcomeIds)
   exposureOutcomePairs$grouping = 1:nrow(exposureOutcomePairs)
   oracleTempSchema = NULL
   exposureIds=NULL
   #outcomeIds=NULL
-  randomSample = "adaptive_sample_size"
-  patientLevel = T
+  patientLevel = TRUE
   
   start <- Sys.time()
   
-  ##############################################
-  # Modify input parameters depending on input
-  ##############################################
   # Convert parameter names to lower case ----
   exposureTable <- tolower(exposureTable)
   outcomeTable <- tolower(outcomeTable)
@@ -261,74 +238,8 @@ getChronographData <- function(connectionDetails,
     outcomePersonIdField <- "subject_id"
   }
   
-  ###############################################################
-  # Check if variance in the expected is likely to be negligible
-  ###############################################################
-  if(!is.null(randomSample)){
-    if(randomSample %in% "adaptive_sample_size"){
-      conn <- DatabaseConnector::connect(connectionDetails)
-      on.exit(DatabaseConnector::disconnect(conn))
-      
-      # Insert preliminary zeroes to avoid warning from SQL
-      countsForBinomialRatio <- setNames(data.frame(matrix(rep(0,4),ncol=4)), c("N_exposure_outcome","N_exposure","N_outcome","N_tot"))
-      
-      DatabaseConnector::insertTable(connection = conn,
-                                     tableName = "#binratio",
-                                     data = countsForBinomialRatio,
-                                     dropTableIfExists = TRUE,
-                                     createTable = TRUE,
-                                     tempTable = T,
-                                     oracleTempSchema = oracleTempSchema)
-      
-      sql <- SqlRender::loadRenderTranslateSql(sqlFilename="GetCountsForBinomialConfidenceRatio.sql",
-                                               packageName = "IcTemporalPatternDiscovery",
-                                               dbms = connectionDetails$dbms,
-                                               oracleTempSchema = oracleTempSchema,
-                                               cdm_database_schema = cdmDatabaseSchema,
-                                               exposure_database_schema = exposureDatabaseSchema,
-                                               exposure_table = exposureTable,
-                                               exposure_id_field = exposureIdField,
-                                               exposure_person_id_field = exposurePersonIdField,
-                                               outcome_database_schema = outcomeDatabaseSchema,
-                                               outcome_table = outcomeTable,
-                                               outcome_id_field = outcomeIdField,
-                                               outcome_person_id_field = outcomePersonIdField,
-                                               exposure_ids = exposureOutcomePairs$exposureId,
-                                               outcome_ids = outcomeIds)
-      
-      #writeLines(sql)
-      DatabaseConnector::executeSql(conn, sql)
-      countsForBinomialRatio <- DatabaseConnector::querySql(conn, "select * from #binratio")
-      colnames(countsForBinomialRatio)
-      
-      var_O <- diff(binom.test(x=countsForBinomialRatio$N_EXPOSURE_OUTCOME, n=countsForBinomialRatio$N_EXPOSURE)$conf.int)
-      var_E <- diff(binom.test(x=countsForBinomialRatio$N_OUTCOME, n=countsForBinomialRatio$N_TOT)$conf.int)
-      
-      # If the binomial CI-ratio indicates that the variance in expected will be 
-      # negligible, we divide the counts in the expected by i, until the variance 
-      # exceeds the threshold.
-      if(var_O/var_E > 20){
-        
-        i = 1
-        while(var_O/var_E > 20){
-          i = i + 1
-          var_E <- diff(binom.test(x=round(countsForBinomialRatio$N_OUTCOME/i,0), n=round(countsForBinomialRatio$N_TOT/i,0))$conf.int)
-        }
-        # Must take back the last increase of i, to be on the right side of the threshold
-        i = i-1
-        
-        randomSample = countsForBinomialRatio$N_TOT/i
-        
-        # If the ratio was not above the threshold for the full dataset, we go the safe path and use all data
-      } else {randomSample=NULL}
-    }
-  }
-  
-  
-  ##########################################
-  # Insert the #period-table into the db
-  ##########################################
   # Create a df where each time period is a row ("periodsForDb"), ---
+  # which is inserted into the db as a temptable #period
   periodLength <- 30
   numberOfPeriods <- 72
   periodStarts <- c(
@@ -344,13 +255,17 @@ getChronographData <- function(connectionDetails,
   periodsForDb <- periods
   colnames(periodsForDb) <- SqlRender::camelCaseToSnakeCase(colnames(periodsForDb))
   
+  # Connect to database ----
+  conn <- DatabaseConnector::connect(connectionDetails)
+  on.exit(DatabaseConnector::disconnect(conn))
+  
   ParallelLogger::logTrace("Inserting tables of IDs")
   DatabaseConnector::insertTable(connection = conn,
                                  tableName = "#period",
                                  data = periodsForDb,
                                  dropTableIfExists = TRUE,
                                  createTable = TRUE,
-                                 tempTable = T,
+                                 tempTable = TRUE,
                                  oracleTempSchema = oracleTempSchema)
   
   ###########################################################
@@ -363,7 +278,7 @@ getChronographData <- function(connectionDetails,
     
   } else {
     hasPairs <- TRUE
-    sql_script = "CreateChronographDataFromExposureOutcomePairs_dev.sql"
+    sql_script = "CreateChronographDataFromExposureOutcomePairs.sql"
     
     # Check whether exposureOutcomePairs was passed with a grouping variable.
     # If not, we create one.
@@ -382,7 +297,7 @@ getChronographData <- function(connectionDetails,
     DatabaseConnector::insertTable(conn,
                                    "#exposure_outcome_ids",
                                    exposureOutcomePairs,
-                                   tempTable = T,
+                                   tempTable = TRUE,
                                    dropTableIfExists = TRUE)
   }
   
@@ -401,7 +316,7 @@ getChronographData <- function(connectionDetails,
     randomSampleDf$included = T
     
     DatabaseConnector::insertTable(conn,
-                                   "#random_sample",
+                                   "#randomSample",
                                    randomSampleDf,
                                    tempTable = T,
                                    dropTableIfExists = TRUE,
@@ -409,6 +324,51 @@ getChronographData <- function(connectionDetails,
     
   } else {
     randomSampleFlag = F
+  }
+  
+  #########################################################
+  # Randomly select eras (used in patient-level-setting)
+  #########################################################
+  # There did not exist a db-independent way of sampling rows 
+  # randomly, hence we use sample_n from dplyr. 
+  
+  # We need two sample df:s, one for the exposed and one for the non-exposed. The exposed only select eras from their exposure-eras.
+  
+  if(patientLevel){
+    if(exposureTable != "drug_era"){
+      stop("The exposure table must be named drug_era for patient-level estimation.")
+    }
+    
+    all <- DatabaseConnector::querySql(conn, paste0("select person_id, drug_concept_id, drug_era_id from ", connectionDetails$schema, ".",
+                                                    cdmDatabaseSchema, ".drug_era"))
+    library(dplyr)
+    # Among the drug_eras with exposure, we sample one per patient
+    these_exposed <- all %>%  filter(DRUG_CONCEPT_ID %in% exposureOutcomePairs$exposure_id) %>%
+      group_by(PERSON_ID) %>% sample_n(1) %>% ungroup() 
+    
+    # Among the drug eras from all patients, we sample one per patient
+    these_of_all <- all %>% group_by(PERSON_ID) %>% sample_n(1) %>%
+      ungroup() %>% select(DRUG_ERA_ID)
+    
+    these_exposed <- these_exposed %>% select(DRUG_ERA_ID)
+    
+    selected_from_exposed_drug_eras = data.frame(these_exposed, selected_era = T)
+    selected_from_all_drug_eras = data.frame(these_of_all, selected_era = T)
+  
+    # SQL Server won't accept temptable names longer than 22 characters:
+    DatabaseConnector::insertTable(conn,
+                                   "#exposed_eras_patlev",
+                                   selected_from_exposed_drug_eras,
+                                   tempTable = TRUE,
+                                   dropTableIfExists = TRUE,
+                                   oracleTempSchema = oracleTempSchema)
+    
+    DatabaseConnector::insertTable(conn,
+                                   "#of_all_eras_patlev",
+                                   selected_from_all_drug_eras,
+                                   tempTable = TRUE,
+                                   dropTableIfExists = TRUE,
+                                   oracleTempSchema = oracleTempSchema)
   }
   
   ###############################################################################################################
@@ -443,9 +403,8 @@ getChronographData <- function(connectionDetails,
   ###############################
   # Extract the four temptables
   ###############################
+  # Get observed count, for all periods ----
   ParallelLogger::logInfo("Loading data server")
-  
-  # EXPOSURE 
   sql <- "SELECT * FROM #exposure"
   sql <- SqlRender::translate(sql,
                               targetDialect = connectionDetails$dbms,
@@ -454,27 +413,13 @@ getChronographData <- function(connectionDetails,
   colnames(exposure)[1] = ifelse(hasPairs, "exposure_grouping", "exposure_id")
   colnames(exposure) <- SqlRender::snakeCaseToCamelCase(colnames(exposure))
   
-  if(!patientLevel){
-    # ALL  
-    sql <- "SELECT * FROM #all"
-    sql <- SqlRender::translate(sql,
-                                targetDialect = connectionDetails$dbms,
-                                oracleTempSchema = oracleTempSchema)
-    all <- DatabaseConnector::querySql(conn, sql)
-    colnames(all) <- SqlRender::snakeCaseToCamelCase(colnames(all))
-    
-    # ALL_OUTCOME
-    # Get total outcomes-count, for all periods ----   
-    sql <- "SELECT * FROM #outcome"
-    sql <- SqlRender::translate(sql,
-                                targetDialect = connectionDetails$dbms,
-                                oracleTempSchema = oracleTempSchema)
-    outcome <- DatabaseConnector::querySql(conn, sql)
-    colnames(outcome)[1] = ifelse(hasPairs, "exposure_grouping", "outcome_id")
-    colnames(outcome) <- SqlRender::snakeCaseToCamelCase(colnames(outcome))
-  }
+  sql <- "SELECT period_id, all_observed_count FROM #all"
+  sql <- SqlRender::translate(sql,
+                              targetDialect = connectionDetails$dbms,
+                              oracleTempSchema = oracleTempSchema)
+  all <- DatabaseConnector::querySql(conn, sql)
+  colnames(all) <- SqlRender::snakeCaseToCamelCase(colnames(all))
   
-  # EXPOSURE_OUTCOME
   # Get outcomes-count for exposed for all periods ----
   sql <- "SELECT * FROM #exposure_outcome"
   sql <- SqlRender::translate(sql,
@@ -483,95 +428,14 @@ getChronographData <- function(connectionDetails,
   exposureOutcome <- DatabaseConnector::querySql(conn, sql)
   colnames(exposureOutcome) <- SqlRender::snakeCaseToCamelCase(colnames(exposureOutcome))
   
-  # Select output variables depending on groups or not
-  if(hasPairs){
-    granularity = "grouping" 
-  } else {
-    granularity = c("exposureId", "outcomeId")}
-  
-  # Define function to calculate IC
-  ic_calc <- function(obs, exp, shape.add = 0.5, rate.add = 0.5, percentile = 0.025) {
-    ic <- log2((obs + shape.add)/(exp + rate.add))
-    ic_low <- log2(qgamma(p = percentile, shape = (obs + shape.add), rate = (exp + rate.add)))
-    ic_high <- log2(qgamma(p = (1 - percentile), shape = (obs + shape.add), rate = (exp + rate.add)))
-    return(list(ic = ic, ic_low = ic_low, ic_high = ic_high))
-  }
-  
-  if(patientLevel){
-    
-    # Merge the All and allOutcome by period and person_ID, and take the probability for each patient, and then average.
-    sql <- paste0("DROP TABLE IF EXISTS #PatLevProb; ", 
-                  "SELECT a.period_id, a.person_id, CASE WHEN o.all_outcome_count IS NULL THEN 0 ELSE o.all_outcome_count END AS all_outcome_count, a.all_observed_count INTO #PatLevProb FROM #all a LEFT JOIN #outcome o ON a.period_id=o.period_id AND a.person_id = o.person_id;")
-    sql <- SqlRender::translate(sql,
-                                targetDialect = connectionDetails$dbms,
-                                oracleTempSchema = oracleTempSchema)
-    DatabaseConnector::executeSql(conn, sql)
-    
-    sql <- "SELECT period_id, all_outcome_count=SUM(all_outcome_count), all_observed_count = SUM(all_observed_count), reaction_probability=AVG(cast(all_outcome_count as float)/cast(all_observed_count as float)) FROM #PatLevProb GROUP BY period_id"
-    
-    reaction_probability <- DatabaseConnector::querySql(conn, sql)
-    
-    colnames(reaction_probability) <- SqlRender::snakeCaseToCamelCase(colnames(reaction_probability))
-    result <- merge(reaction_probability, exposureOutcome, by="periodId")  
-    result <- merge(result, exposure, by=c("periodId","exposureGrouping"))
-    result$expectedCount = result$observedCount * result$reactionProbability
-    
-    ic <- ic_calc(obs = result$outcomeCount,
-                  exp = result$expectedCount,
-                  shape.add = shrinkage,
-                  rate.add = shrinkage,
-                  percentile = icPercentile)
-    
-    result$ic <- ic$ic
-    result$icLow <- ic$ic_low
-    result$icHigh <- ic$ic_high
-    
-    # THIS IS TEMPORARY
-    result$grouping = 1
-    
-    result <- result[order(result$periodId),]
-    
-    result <- result[,c(granularity, "periodId", "observedCount", "allOutcomeCount", "allObservedCount", "reactionProbability",
-                        "expectedCount", "outcomeCount", "ic", "icLow", "icHigh")]
-  } else {
-    # Gather the results, calculate ic (by function ic found in ICTPD.R: ----
-    result <- merge(all, exposure)
-    result <- merge(result, outcome)
-    result <- merge(exposureOutcome, result)
-    
-    # Clean up the double grouping-variables
-    if(all(result$outcomeGrouping == result$exposureGrouping)){
-      result$grouping = result$outcomeGrouping
-      result$exposureGrouping = NULL
-      result$outcomeGrouping = NULL
-    } else {
-      stop("The SQL-script CreateChronographDataFromExposureOutcomePairs has returned invalid grouping-variables.")
-    }
-    
-    # Calculate expected count as in RRR (include the drug of interest in the baseline probability)
-    result$expectedCount <- result$observedCount * result$allOutcomeCount/result$allObservedCount
-    
-    ic <- ic_calc(obs = result$outcomeCount,
-                  exp = result$expectedCount,
-                  shape.add = shrinkage,
-                  rate.add = shrinkage,
-                  percentile = icPercentile)
-    
-    result$ic <- ic$ic
-    result$icLow <- ic$ic_low
-    result$icHigh <- ic$ic_high
-    
-    # Order according to grouping/exposureId, periodId
-    if(hasPairs){
-      result <- result[order(result$grouping, result$periodId, decreasing = F),]
-    } else {
-      result <- result[order(result$exposureId, result$outcomeId, result$periodId, decreasing = F),]
-    }
-    
-    result$reactionProbability = result$expectedCount/(result$observedCount)
-    result <- result[, c(granularity, "periodId", "observedCount", "allOutcomeCount", "allObservedCount", "reactionProbability",
-                         "expectedCount", "outcomeCount", "ic", "icLow", "icHigh")]
-  } 
+  # Get total outcomes-count, for all periods ----   
+  sql <- "SELECT * FROM #outcome"
+  sql <- SqlRender::translate(sql,
+                              targetDialect = connectionDetails$dbms,
+                              oracleTempSchema = oracleTempSchema)
+  outcome <- DatabaseConnector::querySql(conn, sql)
+  colnames(outcome)[1] = ifelse(hasPairs, "exposure_grouping", "outcome_id")
+  colnames(outcome) <- SqlRender::snakeCaseToCamelCase(colnames(outcome))
   
   ############################################
   # Clean-up, remove temptables, calculate IC 
@@ -580,15 +444,61 @@ getChronographData <- function(connectionDetails,
                                            packageName = "IcTemporalPatternDiscovery",
                                            dbms = connectionDetails$dbms,
                                            oracleTempSchema = oracleTempSchema,
-                                           has_pairs = hasPairs,
-                                           patient_level_flag = patientLevel)
+                                           has_pairs = hasPairs)
   DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
+  
+  # Gather the results, calculate ic (by function ic found in ICTPD.R: ----
+  result <- merge(all, exposure)
+  result <- merge(result, outcome)
+  result <- merge(exposureOutcome, result)
+  
+  # Clean up the double grouping-variables
+  if(all(result$outcomeGrouping == result$exposureGrouping)){
+    result$grouping = result$outcomeGrouping
+    result$exposureGrouping = NULL
+    result$outcomeGrouping = NULL
+  } else {
+    stop("The SQL-script CreateChronographDataFromExposureOutcomePairs has returned invalid grouping-variables.")
+  }
+  
+  # Calculate expected count as in RRR (include the drug of interest in the baseline probability)
+  result$expectedCount <- result$observedCount * result$allOutcomeCount/result$allObservedCount
+  
+  ic_calc <- function(obs, exp, shape.add = 0.5, rate.add = 0.5, percentile = 0.025) {
+    ic <- log2((obs + shape.add)/(exp + rate.add))
+    ic_low <- log2(qgamma(p = percentile, shape = (obs + shape.add), rate = (exp + rate.add)))
+    ic_high <- log2(qgamma(p = (1 - percentile), shape = (obs + shape.add), rate = (exp + rate.add)))
+    return(list(ic = ic, ic_low = ic_low, ic_high = ic_high))
+  }
+  
+  ic <- ic_calc(obs = result$outcomeCount,
+                exp = result$expectedCount,
+                shape.add = shrinkage,
+                rate.add = shrinkage,
+                percentile = icPercentile)
+  
+  result$ic <- ic$ic
+  result$icLow <- ic$ic_low
+  result$icHigh <- ic$ic_high
+  
+  # Order according to grouping/exposureId, periodId
+  if(hasPairs){
+    result <- result[order(result$grouping, result$periodId, decreasing = F),]
+  } else {
+    result <- result[order(result$exposureId, result$outcomeId, result$periodId, decreasing = F),]
+  }
+  
+  # Select output variables depending on groups or not
+  if(hasPairs){
+    granularity = "grouping" 
+  } else {
+    granularity = c("exposureId", "outcomeId")}
+  
+  result <- result[, c(granularity, "periodId", "observedCount", "outcomeCount", "allObservedCount", "allOutcomeCount",
+                       "expectedCount", "ic", "icLow", "icHigh")]
   
   delta <- Sys.time() - start
   ParallelLogger::logInfo(paste("Getting data took", signif(delta, 3), attr(delta, "units")))
-  
-  # cat(randomSample)
-  # IcTemporalPatternDiscovery::plotChronograph(result, grouping=1)
   
   return(result)
 }

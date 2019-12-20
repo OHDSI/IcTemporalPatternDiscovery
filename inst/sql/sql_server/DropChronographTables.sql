@@ -1,4 +1,5 @@
 {DEFAULT @has_pairs = FALSE}
+{DEFAULT @patient_level_flag = FALSE}
 
 TRUNCATE TABLE #exposure;
 
@@ -24,4 +25,11 @@ DROP TABLE #period;
 TRUNCATE TABLE #exposure_outcome_ids;
 
 DROP TABLE #exposure_outcome_ids;
+}
+
+{@patient_level_flag} ? {
+TRUNCATE TABLE #PatLevProb
+
+DROP TABLE #PatLevProb
+
 }
