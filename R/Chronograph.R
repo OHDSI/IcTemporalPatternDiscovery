@@ -107,6 +107,15 @@
 #' compared. But the chronograph also allows comparison against the expected, which could be all persons with a drug initiation, or some
 #' subset of those, as controlled by the outcomeIds and exposureIds. 
 #' 
+#'
+#' @examples   
+#' 
+#'
+#' @details  The chronograph displays the observed and the expected number of persons with the event over time. The approach can be 
+#' described as self-controlled in the sense that the observed number of persons with the reaction before and after the exposure can be
+#' compared. But the chronograph also allows comparison against the expected, which could be all persons with a drug initiation, or some
+#' subset of those, as controlled by the outcomeIds and exposureIds. 
+#' 
 #' When mapping vocabularies e.g. from medDRA to SNOMED, it is possible that the mapping produces multiple terms. To create a 
 #' chronograph for the joint SNOMED-terms, data collected from server for single exposures and outcomes cannot not be aggregated later for
 #' multiple exposures or multiple outcomes, as the same person might be counted multiple times. You should instead pass an 
@@ -150,11 +159,15 @@ getChronographData <- function(connectionDetails,
   # exposureIds = 1125315
   # outcomeIds = 260139
   ##  Remifentanil and PTSD
+  ##  Remifentanil and PTSD 
   exposureIds = 19016749
   outcomeIds = 436676
   ## Docetaxel and prostate cancer
   exposureIds = 1315942
   outcomeIds = 37395648
+  
+  # Asthma
+  outcomeIds=317009
   
   exposureOutcomePairs = data.frame("exposureId"=exposureIds, "outcomeId"=outcomeIds)
   exposureOutcomePairs$grouping = 1:nrow(exposureOutcomePairs)
