@@ -14,8 +14,7 @@ Description: Population-level estimation method that estimates risk by combining
 URL: https://ohdsi.github.io/IcTemporalPatternDiscovery, https://github.com/OHDSI/IcTemporalPatternDiscovery
 BugReports: https://github.com/OHDSI/IcTemporalPatternDiscovery/issues
 Depends:
-  stats,
-	DatabaseConnector (>= 1.11.4),
+  stats
 Imports:
 	SqlRender,
 	ParallelLogger,

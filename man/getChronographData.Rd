@@ -18,7 +18,8 @@ getChronographData(
   outcomeTable = "condition_era",
   shrinkage = 0.5,
   icPercentile = 0.025,
-  randomSample = NULL
+  randomSample = NULL,
+  patientLevel = TRUE
 )
 }
 \arguments{
@@ -116,6 +117,11 @@ Get the data for creating chronographs from the server.
 The chronograph displays the observed and the expected number of persons with the event over time. The approach can be 
 described as self-controlled in the sense that the observed number of persons with the reaction before and after the exposure can be
 compared. But the chronograph also allows comparison against the expected, which could be all persons with a drug initiation, or some
+subset of those, as controlled by the outcomeIds and exposureIds.
+
+The chronograph displays the observed and the expected number of persons with the event over time. The approach can be 
+described as self-controlled in the sense that the observed number of persons with the reaction before and after the exposure can be
+compared. But the chronograph also allows comparison against the expected, which could be all persons with a drug initiation, or some
 subset of those, as controlled by the outcomeIds and exposureIds. 
 
 When mapping vocabularies e.g. from medDRA to SNOMED, it is possible that the mapping produces multiple terms. To create a 
@@ -125,54 +131,6 @@ exposureOutcomePairs-table, when the interest lies in a chronograph based on sev
 }
 \examples{
   
-
-# A chronograph-call, which collects data for an exposure-outcome-pair, and calculates the expected based on
-the specified exposure_background. 
-
-exposureOutcomePairs <- cbind.data.frame("exposureId"=c(40170549), "outcomeId"=c(321389))
-exposure_background <- c(1321636, 40167333, 711452, 40173533, 981774, 19030860, 19037401, 925102, 1337068)
-outcome_background <- c(321389)
-          
- output <- getChronographData(connectionDetails = connectionDetails,
-                              oracleTempSchema = NULL,
-                              cdmDatabaseSchema = "YOUR_DATABASE_SCHEMA",
-                              cdmVersion = "5",
-                              exposureIds = exposure_background,
-                              outcomeIds = outcome_background,
-                              exposureOutcomePairs = exposureOutcomePairs,
-                              exposureDatabaseSchema = cdmDatabaseSchema,
-                              exposureTable = "drug_era",
-                              outcomeDatabaseSchema = cdmDatabaseSchema,
-                              outcomeTable = "condition_era",
-                              shrinkage = 0.5,
-                              icPercentile = 0.025
-                              patientLevel = T)
-                              
- # Plot the results:
- plot(IcTemporalPatternDiscovery::plotChronograph(data=output, exposureId = 40170549, outcomeId = 321389, title="Exposure 40170549 vs Outcome 321389"))
-
-# By passing a grouping, the chronograph treats all exposures listed in the grouping as if they one and the same.
-# The same applies for the exposures. The background exposure is unspecified and hence all exposures are used, and the background
-# is the outcomes from the grouping.  
-exposureOutcomePairs <- cbind.data.frame("grouping"=1, setNames(expand.grid(c(40170549, 1321636), c(321389,   73609,  134401)), c("exposureId", "outcomeId")))
-                              exposureIds = c(321389,   73609,  134401)
-          
- output <- getChronographData(connectionDetails = connectionDetails,
-                              oracleTempSchema = NULL,
-                              cdmDatabaseSchema = "YOUR_DATABASE_SCHEMA",
-                              cdmVersion = "5",
-                              exposureOutcomePairs = exposureOutcomePairs,
-                              exposureDatabaseSchema = cdmDatabaseSchema,
-                              exposureTable = "drug_era",
-                              outcomeDatabaseSchema = cdmDatabaseSchema,
-                              outcomeTable = "condition_era",
-                              shrinkage = 0.5,
-                              icPercentile = 0.025,
-                              patientLevel = T)
- 
- # Plot the results:
- plot(IcTemporalPatternDiscovery::plotChronograph(data=output, grouping = 1, 
- title="Exposures 40170549, 1321636 and Outcomes 321389, 73609, 134401"))
 
 
 }
