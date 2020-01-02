@@ -18,6 +18,7 @@ r_github_packages:
   - OHDSI/ParallelLogger
   
 latex: false
+warnings_are_errors: false
 
 before_script:
   - export PKG_NAME=$(Rscript -e 'cat(paste0(devtools::as.package(".")$package))')
