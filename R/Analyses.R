@@ -39,8 +39,8 @@
 #' @param calculateStatisticsIcArgs   An object representing the arguments to be used when calling the
 #'                                    \code{\link{calculateStatisticsIc}} function, analogous to 
 #'                                    getDbIctpdDataArgs.
-#' @return                            Returns a list, with type set to "ictpdAnalysis", with the input parameters
-#'                                    as list elements.             
+#' @return                            Returns a list, with type set to "ictpdAnalysis", with the input 
+#'                                    parameters as list elements.             
 #' @examples
 #' 
 #' 

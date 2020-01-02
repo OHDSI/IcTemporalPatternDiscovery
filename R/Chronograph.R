@@ -106,10 +106,6 @@
 #' described as self-controlled in the sense that the observed number of persons with the reaction before and after the exposure can be
 #' compared. But the chronograph also allows comparison against the expected, which could be all persons with a drug initiation, or some
 #' subset of those, as controlled by the outcomeIds and exposureIds. 
-#' 
-#'
-#' @examples   
-#' 
 #'
 #' @details  The chronograph displays the observed and the expected number of persons with the event over time. The approach can be 
 #' described as self-controlled in the sense that the observed number of persons with the reaction before and after the exposure can be

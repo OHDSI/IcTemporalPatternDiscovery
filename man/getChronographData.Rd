@@ -129,8 +129,3 @@ chronograph for the joint SNOMED-terms, data collected from server for single ex
 multiple exposures or multiple outcomes, as the same person might be counted multiple times. You should instead pass an 
 exposureOutcomePairs-table, when the interest lies in a chronograph based on several SNOMED or RxNormExtended-terms.
 }
-\examples{
-  
-
-
-}
