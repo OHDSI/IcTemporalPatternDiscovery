@@ -15,7 +15,7 @@ URL: https://ohdsi.github.io/IcTemporalPatternDiscovery, https://github.com/OHDS
 BugReports: https://github.com/OHDSI/IcTemporalPatternDiscovery/issues
 Depends:
   stats,
-	DatabaseConnector (>= 1.11.4),
+  DatabaseConnector (>= 1.11.4),
 Imports:
 	SqlRender,
 	ParallelLogger,
