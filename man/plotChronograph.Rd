@@ -9,6 +9,7 @@ plotChronograph(
   exposureId,
   outcomeId,
   grouping = NULL,
+  removeZero = FALSE,
   title = NULL,
   fileName = NULL
 )
@@ -21,6 +22,8 @@ plotChronograph(
 \item{outcomeId}{The unique ID identifying the outcome to plot.}
 
 \item{grouping}{The unique grouping ID, in case \code{getChronographData} was called with groupings.}
+
+\item{removeZero}{Don't plot the value at time zero.}
 
 \item{title}{The title to show above the plot.}
 

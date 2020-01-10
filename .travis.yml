@@ -16,6 +16,7 @@ r_github_packages:
   - OHDSI/DatabaseConnectorJars
   - OHDSI/DatabaseConnector
   - OHDSI/ParallelLogger
+  - OHDSI/Eunomia
   
 latex: false
 warnings_are_errors: false

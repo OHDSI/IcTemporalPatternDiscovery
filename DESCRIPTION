@@ -16,6 +16,7 @@ BugReports: https://github.com/OHDSI/IcTemporalPatternDiscovery/issues
 Depends:
   stats,
   DatabaseConnector (>= 1.11.4),
+  Eunomia
 Imports:
 	SqlRender,
 	ParallelLogger,
@@ -25,3 +26,5 @@ Imports:
 License: Apache License 2.0
 RoxygenNote: 7.0.0
 Encoding: UTF-8
+Suggests: 
+    testthat (>= 2.1.0)
