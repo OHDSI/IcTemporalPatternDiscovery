@@ -11,3 +11,5 @@ docs
 ^notes$
 ^sandbox$
 ^sandbox\.R$
+^Chronograph_sample_eras\.R$
+^SQL_chronograph_sample_eras\.sql$

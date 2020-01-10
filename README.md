@@ -6,6 +6,8 @@ IC Temporal Pattern Discovery
 Introduction
 ============
 
+# Please note that the development branch is under development, and is currently not recommended for use.
+
 This R package is an implementation of the IC Temporal Pattern Discovery method to estimate risk by combining a self-controlled and cohort design. IC stands for Information component and is log2 of a shrunken observed-to-expected ratio. The package is designed to run against observational databases in the OMOP Common Data Model.
 
 Features

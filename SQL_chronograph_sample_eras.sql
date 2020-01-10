@@ -24,8 +24,8 @@
 IF OBJECT_ID('tempdb..#exposure', 'U') IS NOT NULL
 	DROP TABLE #exposure;
 
-IF OBJECT_ID('tempdb..#all_observed', 'U') IS NOT NULL
-	DROP TABLE #all_observed;	
+IF OBJECT_ID('tempdb..#all_exposed', 'U') IS NOT NULL
+	DROP TABLE #all_exposed;	
 	
 IF OBJECT_ID('tempdb..#exposure_outcome', 'U') IS NOT NULL
 	DROP TABLE #exposure_outcome;
@@ -33,14 +33,16 @@ IF OBJECT_ID('tempdb..#exposure_outcome', 'U') IS NOT NULL
 IF OBJECT_ID('tempdb..#outcome', 'U') IS NOT NULL
 	DROP TABLE #outcome;
 
+---------------- THIS IS PART 1, CREATES #EXPOSURE
+-- Counts the number of observed patients (or eras, depending on patient_level-parameter) for each exposure/reaction.
+
 -- Each of the four parts below create two subtables, a and b, which are joined for the final temptable.
 -- The a-table is just an empty frame, based on the exposures (as defined by groupings) and the periods.
 -- The b-table is where patients are counted, and in the end, the results in b are merged into the a-frame.
 
--- The random_sample_flag only operates on the All and allOutcome-tables. It joins an include variable on the patient ID-variable,
--- and then exclude the rows where column include is not TRUE. 
+-- The random_sample_flag and patient_level_flag works very similar, they join on TRUE-variables to some ID-variable,
+-- and then exclude the rows which lack the TRUE. 
 
----------------- THIS IS PART 1, CREATES #EXPOSURE, counts the number of observed among the exposed. 
 SELECT a.grouping, 
        a.period_id, 
        CASE WHEN b.observed_count IS NULL THEN 0 ELSE b.observed_count END AS observed_count
@@ -66,6 +68,14 @@ INNER JOIN @cdm_database_schema.observation_period
 		AND exposure.@exposure_start_field <= observation_period_end_date
  LEFT JOIN #exposure_outcome_ids exp_out_ids
 	ON exp_out_ids.exposure_id = exposure.@exposure_id_field
+	{@random_sample_flag} ? {
+ LEFT JOIN #random_sample random_sample
+  ON random_sample.person_id = exposure.@exposure_person_id_field
+  }
+  	{@patient_level_flag} ? {
+   LEFT JOIN #exposed_eras_patlev eras_patlev
+  ON eras_patlev.DRUG_ERA_ID = exposure.drug_era_id
+  }
   WHERE DATEADD(DAY, period.period_start, exposure.@exposure_start_field) <= observation_period_end_date
 	AND DATEADD(DAY, period.period_end, exposure.@exposure_start_field) >= observation_period_start_date
 {@exposure_ids != ''} ? {
@@ -75,13 +85,71 @@ INNER JOIN @cdm_database_schema.observation_period
  	AND exposure.@exposure_id_field IN (SELECT DISTINCT exposure_id FROM #exposure_outcome_ids) 
 	}
 }
+{@random_sample_flag} ? {
+ AND random_sample.included like 'TRUE'
+}
+{@patient_level_flag} ? {
+ AND eras_patlev.selected_era like 'TRUE'
+}
 GROUP BY exp_out_ids.exposure_grouping,
     period.period_id
+{@random_sample_flag} ? {
+ , random_sample.included
+}
 ) b
     ON  a.grouping = b.exposure_grouping
     AND a.period_id   = b.period_id;
-    
----------------- THIS IS PART 2, CREATES #EXPOSURE_OUTCOME, also known as "the observed".
+	
+---------------- THIS IS PART 2, CREATES #ALL_EXPOSED
+  -- Counts the number of people observed for all exposures/drugs (unless a subset is specified by exposureIds)
+	-- Position e.g. -36 to 36 months centered around the drug era initiation date. 
+	-- For each period, check if there is at least one day within the observation period
+	-- of the patient. This means that for this period, the patient/drug-combination has
+	-- been able to experience the event i.e. this is the denominator.
+	
+	-- A note on the randomly selected eras.
+	-- Note that you could exclude the exposed from all, but as UMC prefers IC/RRR rather than PRR, 
+  -- we include the exposed here. We sample the random eras per person, from all possible eras, 
+  -- i.e. the exposed might contribute with a non-exposed era in all. This is done not to skew
+  -- the comparison, i.e. here we compare a random sample of the exposed eras against a random sample
+  -- from all eras. The same approach is used in outcome. 
+	
+SELECT period.period_id,
+	COUNT(*) AS all_observed_count
+INTO #all_exposed
+FROM @exposure_database_schema.@exposure_table exposure
+CROSS JOIN #period period
+INNER JOIN  @cdm_database_schema.observation_period
+	ON exposure.@exposure_person_id_field = observation_period.person_id
+		AND exposure.@exposure_start_field >= observation_period_start_date
+		AND exposure.@exposure_start_field <= observation_period_end_date
+{@random_sample_flag} ? {
+LEFT JOIN #random_sample random_sample
+  ON exposure.@exposure_person_id_field = random_sample.person_id
+}
+{@patient_level_flag} ? {
+  -- Note that we use the second randomly selected era-dataframe here.
+   LEFT JOIN #of_all_eras_patlev eras_patlev
+  ON eras_patlev.DRUG_ERA_ID = exposure.drug_era_id
+  }
+WHERE observation_period_start_date <= DATEADD(DAY, period.period_end, exposure.@exposure_start_field)
+	AND DATEADD(DAY, period.period_start, exposure.@exposure_start_field) <= observation_period_end_date
+{@exposure_ids != ''} ? {
+	AND exposure.@exposure_id_field IN (@exposure_ids)
+} 
+{@random_sample_flag} ? {
+AND random_sample.included like 'TRUE'
+}
+{@patient_level_flag} ? {
+ AND eras_patlev.selected_era like 'TRUE'
+}
+GROUP BY period.period_id
+{@random_sample_flag} ? {
+ , random_sample.included
+}
+;
+
+---------------- THIS IS PART 3, CREATES #EXPOSURE_OUTCOME
 -- Count number of people with the outcome grouping relative to each exposure grouping (within each observation period)	
 SELECT a.exposure_grouping
      , a.outcome_grouping
@@ -136,6 +204,15 @@ INNER JOIN #exposure_outcome_ids exp_out_ids
 	ON exposure.@exposure_id_field = exp_out_ids.exposure_id
 		AND outcome.@outcome_id_field = exp_out_ids.outcome_id
 }
+{@random_sample_flag} ? {
+LEFT JOIN #random_sample random_sample
+  ON exposure.@exposure_person_id_field = random_sample.person_id
+  AND outcome.@outcome_id_field = exp_out_ids.outcome_id
+}
+{@patient_level_flag} ? {
+LEFT JOIN #exposed_eras_patlev eras_patlev
+  ON eras_patlev.DRUG_ERA_ID = exposure.drug_era_id
+  }
 WHERE DATEADD(DAY, period.period_start, exposure.@exposure_start_field) <= outcome.@outcome_start_field
 	AND DATEADD(DAY, period.period_end, exposure.@exposure_start_field) >= outcome.@outcome_start_field
 {!@has_pairs} ? {
@@ -146,64 +223,28 @@ WHERE DATEADD(DAY, period.period_start, exposure.@exposure_start_field) <= outco
 	AND outcome.@outcome_id_field IN (@outcome_ids)
 }
 }
+{@random_sample_flag} ? {
+ AND random_sample.included like 'TRUE'
+}
+{@patient_level_flag} ? {
+ AND eras_patlev.selected_era like 'TRUE'
+}
 GROUP BY exp_out_ids.exposure_grouping,
 	exp_out_ids.outcome_grouping,
     period.period_id
+{@random_sample_flag} ? {
+ , random_sample.included
+}
 ) b
     ON  a.exposure_grouping = b.exposure_grouping
     AND a.outcome_grouping  = b.outcome_grouping
     AND a.period_id   = b.period_id;
-	
----------------- THIS IS PART 3, CREATES #all_observed, as in all observed, N_TOT.
-  -- Counts the number of people observed for all exposures/drugs (unless a subset is specified by exposureIds)
-	
-	-- patient_level_flag = TRUE groups the counts by person_id. 
-	
-	-- A note on the randomly selected eras.
-	-- You could exclude the exposed from all, but as UMC prefers IC/RRR rather than PRR, 
-  -- we include the exposed here. We sample the random eras per person, from all possible eras, 
-  -- i.e. the exposed might contribute with a non-exposed era in all. This is done not to skew
-  -- the comparison, i.e. here we compare a random sample of the exposed eras against a random sample
-  -- from all eras. The same approach is used in outcome. 
-	
-SELECT period.period_id,
-	COUNT(*) AS all_observed_count
-	{@patient_level_flag} ? {
-  , exposure.@exposure_person_id_field}
-INTO #all_observed
-FROM @exposure_database_schema.@exposure_table exposure
-CROSS JOIN #period period
-INNER JOIN  @cdm_database_schema.observation_period
-	ON exposure.@exposure_person_id_field = observation_period.person_id
-		AND exposure.@exposure_start_field >= observation_period_start_date
-		AND exposure.@exposure_start_field <= observation_period_end_date
-{@random_sample_flag} ? {
-LEFT JOIN #random_sample random_sample
-  ON exposure.@exposure_person_id_field = random_sample.person_id
-}
-WHERE observation_period_start_date <= DATEADD(DAY, period.period_end, exposure.@exposure_start_field)
-	AND DATEADD(DAY, period.period_start, exposure.@exposure_start_field) <= observation_period_end_date
-{@exposure_ids != ''} ? {
-	AND exposure.@exposure_id_field IN (@exposure_ids)
-} 
-{@random_sample_flag} ? {
-AND random_sample.included like 'TRUE'
-}
-GROUP BY period.period_id
-{@patient_level_flag} ? {
- , exposure.@exposure_person_id_field
-}
-;
 
--- THIS IS PART 4, CREATES #OUTCOME, also known as N_Reaction
+-- THIS IS PART 4, CREATES #OUTCOME
 -- Uses the whole population, to count number of outcomes relative to any exposure (within each observation period)
--- patient_level_flag = TRUE groups the counts by person_id. 
-
 SELECT a.grouping
 	 , a.period_id
 	 , CASE WHEN b.all_outcome_count IS NULL THEN 0 ELSE b.all_outcome_count END AS all_outcome_count
-	 	{@patient_level_flag} ? {
-   , b.@exposure_person_id_field}
 INTO #outcome
 FROM
 (
@@ -217,8 +258,6 @@ LEFT JOIN
 SELECT exp_out_ids.outcome_grouping AS grouping,
     period.period_id,
 	COUNT(*) AS all_outcome_count
-		 	{@patient_level_flag} ? {
-   , exposure.@exposure_person_id_field}
 FROM  @exposure_database_schema.@exposure_table exposure
 CROSS JOIN #period period
 INNER JOIN @outcome_database_schema.@outcome_table outcome
@@ -233,6 +272,11 @@ INNER JOIN @cdm_database_schema.observation_period
 {@random_sample_flag} ? {
 LEFT JOIN #random_sample random_sample
   ON exposure.@exposure_person_id_field = random_sample.person_id
+}
+{@patient_level_flag} ? {
+  -- Note that we use the second randomly selected era-dataframe here.
+LEFT JOIN #of_all_eras_patlev eras_patlev
+  ON eras_patlev.DRUG_ERA_ID = exposure.drug_era_id
 }
 LEFT JOIN #exposure_outcome_ids exp_out_ids
 	ON exp_out_ids.outcome_id = outcome.condition_concept_id
@@ -251,10 +295,14 @@ WHERE DATEADD(DAY, period.period_start, exposure.@exposure_start_field) <= outco
 {@random_sample_flag} ? {
  AND random_sample.included like 'TRUE'
 }
+{@patient_level_flag} ? {
+ AND eras_patlev.selected_era like 'TRUE'
+}
 GROUP BY exp_out_ids.outcome_grouping,
     period.period_id
-	 	{@patient_level_flag} ? {
-   , exposure.@exposure_person_id_field}
+            {@random_sample_flag} ? {
+ , random_sample.included
+}
 ) b
     ON  a.grouping  = b.grouping
     AND a.period_id   = b.period_id;

@@ -99,12 +99,7 @@ the database with sample size specified by this parameter. If NULL,
 all records are used.}
 
 \item{patientLevel}{Defaults to TRUE. Estimation can be made on era-level or patient-level. 
-The era-level implies that patients with more drugs influences the 
-estimated expected count more than patients with fewer eras, while 
-patient-level estimation choses one era randomly for each patient. 
-Era-level uses all available information, while patient-level only 
-use one of several possible eras. A detailed description is planned in
-a vignette.}
+A detailed description is planned in a vignette.}
 }
 \value{
 A dataframe named results with observed and expected outcome counts in periods relative to the exposure
@@ -125,7 +120,7 @@ compared. But the chronograph also allows comparison against the expected, which
 subset of those, as controlled by the outcomeIds and exposureIds. 
 
 When mapping vocabularies e.g. from medDRA to SNOMED, it is possible that the mapping produces multiple terms. To create a 
-chronograph for the joint SNOMED-terms, data collected from server for single exposures and outcomes cannot not be aggregated later for
-multiple exposures or multiple outcomes, as the same person might be counted multiple times. You should instead pass an 
+chronograph for the joint SNOMED-terms, data collected from server for single exposures and outcomes cannot not be aggregated 
+later for multiple exposures or multiple outcomes, as the same person might be counted multiple times. You should instead pass an 
 exposureOutcomePairs-table, when the interest lies in a chronograph based on several SNOMED or RxNormExtended-terms.
 }
