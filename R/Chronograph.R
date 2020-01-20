@@ -131,34 +131,38 @@ getChronographData <- function(connectionDetails,
                                patientLevel = TRUE) {
   
   # Debugging parameters for testing
+  
+  # # Eunomia
+  library(Eunomia)
+  connectionDetails <- getEunomiaConnectionDetails()
+  conn <- connect(connectionDetails)
+  cdmDatabaseSchema <- c("cdm_synthea10", "mini","main")[3]
+  
+  # These exposures and outcomes are in eunomia
+  exposureIds = c(738818)
+  outcomeIds = c(260139)
+  exposureOutcomePairs = data.frame("exposureId" = exposureIds, "outcomeId" = outcomeIds)
+  exposureOutcomePairs$grouping = 1
+  cdmVersion = 5
+  
+  ## These parameters should always be set
+  # exposureOutcomePairs = data.frame("exposureId" = exposureIds, "outcomeId" = outcomeIds)
+
+  exposureDatabaseSchema = cdmDatabaseSchema
+  exposureTable = "drug_era"
+  outcomeDatabaseSchema = cdmDatabaseSchema
+  outcomeTable = "condition_era"
+  shrinkage = 0.5
+  icPercentile = 0.025
+  oracleTempSchema = NULL
+  exposureIds = NULL
+  randomSample = 10^5
+  patientLevel = T
+  
+  # # Birth control and Myocardial Infarction
   # Synthea
   # connectionDetails <- DatabaseConnector::createConnectionDetails(dbms = "sql server",  server = "UMCDB06", schema = "OmopCdmSynthea")
   # cdmVersion = "6"
-
-  # # Eunomia
-  # library(Eunomia)
-  # connectionDetails <- getEunomiaConnectionDetails()
-  # conn <- connect(connectionDetails)
-  # cdmDatabaseSchema <- c("cdm_synthea10", "mini","main")[3]
-  # exposureIds = c(738818)
-  # outcomeIds = c(260139)
-  # 
-  # # These parameters should always be set
-  # exposureOutcomePairs = data.frame("exposureId" = exposureIds, "outcomeId" = outcomeIds)
-  # cdmVersion=5
-  # exposureDatabaseSchema = cdmDatabaseSchema
-  # exposureTable = "drug_era"
-  # outcomeDatabaseSchema = cdmDatabaseSchema
-  # outcomeTable = "condition_era"
-  # shrinkage = 0.5
-  # icPercentile = 0.025
-  # oracleTempSchema = NULL
-  # exposureIds = NULL
-  # randomSample = 10^5
-  # patientLevel = T
-  
-
-  # # Birth control and Myocardial Infarction
   # exposureIds = 1549786
   # outcomeIds = 4329847
   # ## Acetaminophen and Acute Bronchitis
@@ -254,6 +258,11 @@ getChronographData <- function(connectionDetails,
   
     sql_script = "CreateChronographDataFromExposureOutcomePairs.sql"
     
+    # Just for the eunomia-test
+    if(connectionDetails$dbms == "sqlite"){
+      sql_script = "sqlite.sql"
+    }
+    
     # Check whether exposureOutcomePairs was passed with a grouping variable.
     # If not, we create one.
     if(!any(grepl("group", colnames(exposureOutcomePairs), ignore.case = T))){
@@ -282,7 +291,6 @@ getChronographData <- function(connectionDetails,
   # we use randomSample from R. 
   
   if(!is.null(randomSample)){
-    
     
     #Based on testing on sqllite and sql server
     path_to_table <- ifelse(connectionDetails$dbms == "sql server", paste0(as.character(c(connectionDetails$schema, cdmDatabaseSchema)), collapse="."), cdmDatabaseSchema)
@@ -322,7 +330,7 @@ getChronographData <- function(connectionDetails,
   # Run workhorse SQL-script CreateChronographData, where four temptables (#outcome, #exposure, ...) are created
   ###############################################################################################################
   
-  SqlRender::loadRenderTranslateSql("test.sql", dbms="sqlite", packageName="IcTemporalPatternDiscovery")
+  SqlRender::loadRenderTranslateSql(sql_script, dbms="sqlite", packageName="IcTemporalPatternDiscovery")
   
   sql <- SqlRender::loadRenderTranslateSql(sqlFilename = sql_script,
                                            packageName = "IcTemporalPatternDiscovery",
