@@ -24,9 +24,10 @@
 #'                                 function \code{createConnectionDetails} in the
 #'                                 \code{DatabaseConnector} package.
 #' @param cdmDatabaseSchema        Name of database schema that contains OMOP CDM and vocabulary.
-#' @param oracleTempSchema         For Oracle only: the name of the database schema where you want all
-#'                                 temporary tables to be managed. Requires create/insert permissions
-#'                                 to this database.
+#' @param oracleTempSchema    DEPRECATED: use `tempEmulationSchema` instead.
+#' @param tempEmulationSchema Some database platforms like Oracle and Impala do not truly support temp tables. To
+#'                            emulate temp tables, provide a schema with write privileges where temp tables
+#'                            can be created.
 #' @param cdmVersion               Define the OMOP CDM version used: currently supports "5".
 #' @param exposureIds              A vector of IDs identifying the exposures to include when computing 
 #'                                 the expected count. If the
@@ -77,6 +78,7 @@
 getChronographData <- function(connectionDetails,
                                cdmDatabaseSchema,
                                oracleTempSchema = NULL,
+                               tempEmulationSchema = getOption("sqlRenderTempEmulationSchema"),
                                cdmVersion = "5",
                                exposureIds = c(),
                                outcomeIds = c(),
@@ -87,6 +89,10 @@ getChronographData <- function(connectionDetails,
                                outcomeTable = "condition_era",
                                shrinkage = 0.5,
                                icPercentile = 0.025) {
+  if (!is.null(oracleTempSchema) && oracleTempSchema != "") {
+    warning("The 'oracleTempSchema' argument is deprecated. Use 'tempEmulationSchema' instead.")
+    tempEmulationSchema <- oracleTempSchema
+  }
   start <- Sys.time()
   exposureTable <- tolower(exposureTable)
   outcomeTable <- tolower(outcomeTable)
@@ -133,16 +139,16 @@ getChronographData <- function(connectionDetails,
                                  dropTableIfExists = TRUE,
                                  createTable = TRUE,
                                  tempTable = TRUE,
-                                 oracleTempSchema = oracleTempSchema)
+                                 tempEmulationSchema = tempEmulationSchema)
   
   if (is.null(exposureOutcomePairs)) {
     hasPairs <- FALSE
   } else {
     hasPairs <- TRUE
     colnames(exposureOutcomePairs) <- SqlRender::camelCaseToSnakeCase(colnames(exposureOutcomePairs))
-    DatabaseConnector::insertTable(conn,
-                                   "#exposure_outcome_ids",
-                                   exposureOutcomePairs,
+    DatabaseConnector::insertTable(connection = conn,
+                                   tableName = "#exposure_outcome_ids",
+                                   data = exposureOutcomePairs,
                                    tempTable = TRUE,
                                    dropTableIfExists = TRUE)
   }
@@ -150,7 +156,7 @@ getChronographData <- function(connectionDetails,
   sql <- SqlRender::loadRenderTranslateSql(sqlFilename = "CreateChronographData.sql",
                                            packageName = "IcTemporalPatternDiscovery",
                                            dbms = connectionDetails$dbms,
-                                           oracleTempSchema = oracleTempSchema,
+                                           tempEmulationSchema = tempEmulationSchema,
                                            cdm_database_schema = cdmDatabaseSchema,
                                            exposure_database_schema = exposureDatabaseSchema,
                                            exposure_table = exposureTable,
@@ -172,35 +178,35 @@ getChronographData <- function(connectionDetails,
   sql <- "SELECT exposure_id, period_id, observed_count FROM #exposure"
   sql <- SqlRender::translate(sql,
                               targetDialect = connectionDetails$dbms,
-                              oracleTempSchema = oracleTempSchema)
+                              tempEmulationSchema = tempEmulationSchema)
   exposure <- DatabaseConnector::querySql(conn, sql)
   colnames(exposure) <- SqlRender::snakeCaseToCamelCase(colnames(exposure))
   
-  sql <- "SELECT period_id, all_observed_count FROM #all"
+  sql <- "SELECT period_id, all_observed_count FROM #all_exposures"
   sql <- SqlRender::translate(sql,
                               targetDialect = connectionDetails$dbms,
-                              oracleTempSchema = oracleTempSchema)
+                              tempEmulationSchema = tempEmulationSchema)
   all <- DatabaseConnector::querySql(conn, sql)
   colnames(all) <- SqlRender::snakeCaseToCamelCase(colnames(all))
   
   sql <- "SELECT exposure_id, outcome_id, period_id, outcome_count FROM #exposure_outcome"
   sql <- SqlRender::translate(sql,
                               targetDialect = connectionDetails$dbms,
-                              oracleTempSchema = oracleTempSchema)
+                              tempEmulationSchema = tempEmulationSchema)
   exposureOutcome <- DatabaseConnector::querySql(conn, sql)
   colnames(exposureOutcome) <- SqlRender::snakeCaseToCamelCase(colnames(exposureOutcome))
   
   sql <- "SELECT outcome_id, period_id, all_outcome_count FROM #outcome"
   sql <- SqlRender::translate(sql,
                               targetDialect = connectionDetails$dbms,
-                              oracleTempSchema = oracleTempSchema)
+                              tempEmulationSchema = tempEmulationSchema)
   outcome <- DatabaseConnector::querySql(conn, sql)
   colnames(outcome) <- SqlRender::snakeCaseToCamelCase(colnames(outcome))
   
   sql <- SqlRender::loadRenderTranslateSql(sqlFilename = "DropChronographTables.sql",
                                            packageName = "IcTemporalPatternDiscovery",
                                            dbms = connectionDetails$dbms,
-                                           oracleTempSchema = oracleTempSchema,
+                                           tempEmulationSchema = tempEmulationSchema,
                                            has_pairs = hasPairs)
   DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
   

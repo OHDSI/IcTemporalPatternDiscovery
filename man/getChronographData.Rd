@@ -4,14 +4,22 @@
 \alias{getChronographData}
 \title{Get the data for chronographs from the server.}
 \usage{
-getChronographData(connectionDetails, cdmDatabaseSchema,
-  oracleTempSchema = NULL, cdmVersion = "5", exposureIds = c(),
-  outcomeIds = c(), exposureOutcomePairs = NULL,
+getChronographData(
+  connectionDetails,
+  cdmDatabaseSchema,
+  oracleTempSchema = NULL,
+  tempEmulationSchema = getOption("sqlRenderTempEmulationSchema"),
+  cdmVersion = "5",
+  exposureIds = c(),
+  outcomeIds = c(),
+  exposureOutcomePairs = NULL,
   exposureDatabaseSchema = cdmDatabaseSchema,
   exposureTable = "drug_era",
   outcomeDatabaseSchema = cdmDatabaseSchema,
-  outcomeTable = "condition_era", shrinkage = 0.5,
-  icPercentile = 0.025)
+  outcomeTable = "condition_era",
+  shrinkage = 0.5,
+  icPercentile = 0.025
+)
 }
 \arguments{
 \item{connectionDetails}{An R object of type \code{ConnectionDetails} created using the
@@ -20,9 +28,11 @@ function \code{createConnectionDetails} in the
 
 \item{cdmDatabaseSchema}{Name of database schema that contains OMOP CDM and vocabulary.}
 
-\item{oracleTempSchema}{For Oracle only: the name of the database schema where you want all
-temporary tables to be managed. Requires create/insert permissions
-to this database.}
+\item{oracleTempSchema}{DEPRECATED: use `tempEmulationSchema` instead.}
+
+\item{tempEmulationSchema}{Some database platforms like Oracle and Impala do not truly support temp tables. To
+emulate temp tables, provide a schema with write privileges where temp tables
+can be created.}
 
 \item{cdmVersion}{Define the OMOP CDM version used: currently supports "5".}
 

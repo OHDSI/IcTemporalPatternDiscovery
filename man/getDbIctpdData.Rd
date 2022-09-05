@@ -4,14 +4,23 @@
 \alias{getDbIctpdData}
 \title{Get ICTPD counts from database}
 \usage{
-getDbIctpdData(connectionDetails, cdmDatabaseSchema,
-  oracleTempSchema = cdmDatabaseSchema, cdmVersion = "5",
-  exposureOutcomePairs, exposureDatabaseSchema = cdmDatabaseSchema,
+getDbIctpdData(
+  connectionDetails,
+  cdmDatabaseSchema,
+  oracleTempSchema = NULL,
+  tempEmulationSchema = getOption("sqlRenderTempEmulationSchema"),
+  cdmVersion = "5",
+  exposureOutcomePairs,
+  exposureDatabaseSchema = cdmDatabaseSchema,
   exposureTable = "drug_era",
   outcomeDatabaseSchema = cdmDatabaseSchema,
-  outcomeTable = "condition_era", controlPeriodStart = -1080,
-  controlPeriodEnd = -361, riskPeriodStart = 1, riskPeriodEnd = 30,
-  censor = FALSE)
+  outcomeTable = "condition_era",
+  controlPeriodStart = -1080,
+  controlPeriodEnd = -361,
+  riskPeriodStart = 1,
+  riskPeriodEnd = 30,
+  censor = FALSE
+)
 }
 \arguments{
 \item{connectionDetails}{An R object of type \code{ConnectionDetails} created using
@@ -21,9 +30,11 @@ the function \code{createConnectionDetails} in the
 \item{cdmDatabaseSchema}{Name of database schema that contains OMOP CDM and
 vocabulary.}
 
-\item{oracleTempSchema}{For Oracle only: the name of the database schema where you
-want all temporary tables to be managed. Requires
-create/insert permissions to this database.}
+\item{oracleTempSchema}{DEPRECATED: use `tempEmulationSchema` instead.}
+
+\item{tempEmulationSchema}{Some database platforms like Oracle and Impala do not truly support temp tables. To
+emulate temp tables, provide a schema with write privileges where temp tables
+can be created.}
 
 \item{cdmVersion}{Define the OMOP CDM version used: currently supports "5".}
 

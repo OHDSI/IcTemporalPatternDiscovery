@@ -1,7 +1,8 @@
 IC Temporal Pattern Discovery
 =============================
 
-[![Build Status](https://travis-ci.org/OHDSI/IcTemporalPatternDiscovery.svg?branch=master)](https://travis-ci.org/OHDSI/IcTemporalPatternDiscovery)
+[![Build Status](https://github.com/OHDSI/IcTemporalPatternDiscovery/workflows/R-CMD-check/badge.svg)](https://github.com/OHDSI/IcTemporalPatternDiscovery/actions?query=workflow%3AR-CMD-check)
+[![codecov.io](https://codecov.io/github/OHDSI/IcTemporalPatternDiscovery/coverage.svg?branch=main)](https://codecov.io/github/OHDSI/IcTemporalPatternDiscovery?branch=main)
 
 Introduction
 ============
@@ -17,7 +18,7 @@ Features
 Example
 =======
 ```r
-library(SelfControlledCohort)
+library(IcTemporalPatternDiscovery)
 
 connectionDetails <- createConnectionDetails(dbms = "postgresql",
                                              user = "joe",
@@ -42,22 +43,26 @@ IcTemporalPatternDiscovery is an R package.
 
 System Requirements
 ============
-Requires R (version 3.1.0 or higher). Libraries used in this package require Java.
+Requires R (version 4.0.0 or higher). Libraries used in this package require Java.
 
 Installation
 ============
-1. The DatabaseConnector and SqlRender packages require Java. Java can be downloaded from
-<a href="http://www.java.com" target="_blank">http://www.java.com</a>.
+
+1. See the instructions [here](https://ohdsi.github.io/Hades/rSetup.html) for configuring your R environment, including Java.
+
 2. In R, use the following commands to download and install IcTemporalPatternDiscovery:
 
   ```r
-  install.packages("drat")
-  drat::addRepo("OHDSI")
-  install.packages("IcTemporalPatternDiscovery")
+  install.packages("remotes")
+  remotes::install_github("ohdsi/IcTemporalPatternDiscovery")
   ```
 
 User Documentation
 ==================
+Documentation can be found on the [package website](https://ohdsi.github.io/DatabaseConnector/).
+
+PDF versions of the documentation are also available:
+
 * Package manual: [IcTemporalPatternDiscovery.pdf](https://raw.githubusercontent.com/OHDSI/IcTemporalPatternDiscovery/master/extras/IcTemporalPatternDiscovery.pdf) 
 
 Support

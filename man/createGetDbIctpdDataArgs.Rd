@@ -4,17 +4,15 @@
 \alias{createGetDbIctpdDataArgs}
 \title{Create a parameter object for the function getDbIctpdData}
 \usage{
-createGetDbIctpdDataArgs(drugTypeConceptIdList = c(38000182),
-  conditionTypeConceptIdList = c(38000247), controlPeriodStart = -1080,
-  controlPeriodEnd = -361, riskPeriodStart = 1, riskPeriodEnd = 30,
-  censor = FALSE)
+createGetDbIctpdDataArgs(
+  controlPeriodStart = -1080,
+  controlPeriodEnd = -361,
+  riskPeriodStart = 1,
+  riskPeriodEnd = 30,
+  censor = FALSE
+)
 }
 \arguments{
-\item{drugTypeConceptIdList}{Which drug_type to use: generally only use 1 value (ex: 30dera).}
-
-\item{conditionTypeConceptIdList}{Which condition_type to use: generally only use 1 value (ex:
-30dera).}
-
 \item{controlPeriodStart}{start of the control period - can be set between -99999 and0,
 default is -1080.}
 

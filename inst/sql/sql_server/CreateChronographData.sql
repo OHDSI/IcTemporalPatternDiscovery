@@ -13,17 +13,13 @@
 {DEFAULT @outcome_start_field = 'condition_era_start_date'}
 {DEFAULT @outcome_person_id_field = 'person_id'}
 
-IF OBJECT_ID('tempdb..#exposure', 'U') IS NOT NULL
-	DROP TABLE #exposure;
+DROP TABLE IF EXISTS #exposure;
 
-IF OBJECT_ID('tempdb..#all', 'U') IS NOT NULL
-	DROP TABLE #all;	
+DROP TABLE IF EXISTS #all_exposures;	
 	
-IF OBJECT_ID('tempdb..#exposure_outcome', 'U') IS NOT NULL
-	DROP TABLE #exposure_outcome;
+DROP TABLE IF EXISTS #exposure_outcome;
 
-IF OBJECT_ID('tempdb..#outcome', 'U') IS NOT NULL
-	DROP TABLE #outcome;		
+DROP TABLE IF EXISTS #outcome;		
 
 -- Count number of people observed relative to each exposure	
 SELECT exposure.@exposure_id_field AS exposure_id,
@@ -51,7 +47,7 @@ GROUP BY exposure.@exposure_id_field,
 -- Count number of people observed relative to any exposure	
 SELECT period.period_id,
 	COUNT(*) AS all_observed_count
-INTO #all
+INTO #all_exposures
 FROM @exposure_database_schema.@exposure_table exposure
 CROSS JOIN #period period
 INNER JOIN @cdm_database_schema.observation_period

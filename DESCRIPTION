@@ -1,8 +1,8 @@
 Package: IcTemporalPatternDiscovery
 Type: Package
 Title: IC Temporal Pattern Discovery
-Version: 1.1.1
-Date: 2018-10-09
+Version: 1.2.0
+Date: 2022-09-05
 Authors@R: c(
 	person("Tomas", "Bergvall", email = "tomas.bergvall@who-umc.org", role = c("aut", "cre")),
 	person("Martijn", "Schuemie", email = "schuemie@ohdsi.org", role = c("aut")),
@@ -14,11 +14,17 @@ Description: Population-level estimation method that estimates risk by combining
 URL: https://ohdsi.github.io/IcTemporalPatternDiscovery, https://github.com/OHDSI/IcTemporalPatternDiscovery
 BugReports: https://github.com/OHDSI/IcTemporalPatternDiscovery/issues
 Depends:
-	DatabaseConnector (>= 1.11.4),
+	DatabaseConnector (>= 5.0.4),
 Imports:
-	SqlRender,
+	SqlRender (>= 1.9.2),
 	ParallelLogger,
 	ggplot2,
 	gridExtra
+Suggests:
+  testthat,
+  withr,
+  Eunomia
+Remotes:
+  ohdsi/Eunomia
 License: Apache License 2.0
-RoxygenNote: 6.1.1
+RoxygenNote: 7.2.1

@@ -5,9 +5,6 @@
 #' @details
 #' Create an object defining the parameter values.
 #'
-#' @param drugTypeConceptIdList        Which drug_type to use: generally only use 1 value (ex: 30dera).
-#' @param conditionTypeConceptIdList   Which condition_type to use: generally only use 1 value (ex:
-#'                                     30dera).
 #' @param controlPeriodStart           start of the control period - can be set between -99999 and0,
 #'                                     default is -1080.
 #' @param controlPeriodEnd             end of the control period - can be set between -99999 and0,
@@ -21,9 +18,7 @@
 #'                                     with default = 0.
 #'
 #' @export
-createGetDbIctpdDataArgs <- function(drugTypeConceptIdList = c(38000182),
-                                     conditionTypeConceptIdList = c(38000247),
-                                     controlPeriodStart = -1080,
+createGetDbIctpdDataArgs <- function(controlPeriodStart = -1080,
                                      controlPeriodEnd = -361,
                                      riskPeriodStart = 1,
                                      riskPeriodEnd = 30,

@@ -1,21 +1,12 @@
 library(IcTemporalPatternDiscovery)
 
-dbms <- "pdw"
-user <- NULL
-pw <- NULL
-server <- Sys.getenv("PDW_SERVER")
-port <- Sys.getenv("PDW_PORT")
-oracleTempSchema <- NULL
-connectionDetails <- DatabaseConnector::createConnectionDetails(dbms = dbms,
-                                                                server = server,
-                                                                user = user,
-                                                                password = pw,
-                                                                port = port)
-
-# MDCD settings ----------------------------------------------------------------
-cdmDatabaseSchema <- "cdm_truven_mdcd_v699.dbo"
-cohortDatabaseSchema <- "scratch.dbo"
-
+connectionDetails <- DatabaseConnector::createConnectionDetails(dbms = "redshift",
+                                                                connectionString = keyring::key_get("redShiftConnectionStringOhdaMdcd"),
+                                                                user = keyring::key_get("redShiftUserName"),
+                                                                password = keyring::key_get("redShiftPassword"))
+cdmDatabaseSchema <- "cdm_truven_mdcd_v2128"
+cohortDatabaseSchema <- "scratch_mschuemi"
+cdmVersion <- "5"
 
 exposureOutcomePairs <- data.frame(exposureId = c(767410,
                                                   1314924,
@@ -74,15 +65,12 @@ s <- summarizeAnalyses(result)
 
 # Chronographs --------------------------------------------------------------
 
-
-cohortDatabaseSchema <- "scratch.dbo"
-
 connection <- DatabaseConnector::connect(connectionDetails)
 
 # Create GI Bleed outcome
 sql <- SqlRender::loadRenderTranslateSql("VignetteOutcomes.sql",
                                          packageName = "CohortMethod",
-                                         dbms = dbms,
+                                         dbms = connection@dbms,
                                          cdmDatabaseSchema = cdmDatabaseSchema,
                                          resultsDatabaseSchema = cohortDatabaseSchema)
 DatabaseConnector::executeSql(connection, sql)
@@ -160,7 +148,7 @@ chronographData <- getChronographData(connectionDetails = connectionDetails,
                                       outcomeDatabaseSchema = cohortDatabaseSchema,
                                       outcomeTable = "outcomes")
                                       
-saveRDS(chronographData, "c:/temp/chronographData.rds")
+saveRDS(chronographData, "s:/temp/chronographData.rds")
 
 plotChronograph(chronographData, exposureId = 1124300, outcomeId = 192671)
 
