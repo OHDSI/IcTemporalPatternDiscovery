@@ -1,7 +1,5 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
-.travis.yml
-^\.travis\.yml$
 extras
 ^\.git
 man-roxygen
@@ -9,3 +7,4 @@ deploy.sh
 compare_versions
 _pkgdown.yml
 docs
+.github
