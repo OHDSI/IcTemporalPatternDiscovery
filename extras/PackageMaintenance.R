@@ -1,6 +1,6 @@
 # @file PackageMaintenance
 #
-# Copyright 2019 Observational Health Data Sciences and Informatics
+# Copyright 2022 Observational Health Data Sciences and Informatics
 #
 # This file is part of IcTemporalPatternDiscovery
 # 
@@ -17,7 +17,7 @@
 # limitations under the License.
 
 # Format and check code
-OhdsiRTools::formatRFolder()
+styler::style_pkg()
 OhdsiRTools::checkUsagePackage("IcTemporalPatternDiscovery")
 OhdsiRTools::updateCopyrightYearFolder()
 

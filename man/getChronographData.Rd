@@ -36,14 +36,14 @@ can be created.}
 
 \item{cdmVersion}{Define the OMOP CDM version used: currently supports "5".}
 
-\item{exposureIds}{A vector of IDs identifying the exposures to include when computing 
+\item{exposureIds}{A vector of IDs identifying the exposures to include when computing
 the expected count. If the
 expsosure table is the drug_era table, these IDs correspond to
 ingredient concept IDs. If the exposure table has the format of the
 cohort table, these IDs correspond to the cohort definition IDs. If
 left empty, all records in the exposure table will be used.}
 
-\item{outcomeIds}{A vector of IDs identifying the outcomes to include when computing 
+\item{outcomeIds}{A vector of IDs identifying the outcomes to include when computing
 the expected count.. If the outcome
 table is the drug_era table, these IDs correspond to condition
 concept IDs. If the outcomes table has the format of the cohort

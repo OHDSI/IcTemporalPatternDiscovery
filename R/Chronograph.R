@@ -1,4 +1,4 @@
-# Copyright 2019 Observational Health Data Sciences and Informatics
+# Copyright 2022 Observational Health Data Sciences and Informatics
 #
 # This file is part of IcTemporalPatternDiscovery
 #
@@ -29,13 +29,13 @@
 #'                            emulate temp tables, provide a schema with write privileges where temp tables
 #'                            can be created.
 #' @param cdmVersion               Define the OMOP CDM version used: currently supports "5".
-#' @param exposureIds              A vector of IDs identifying the exposures to include when computing 
+#' @param exposureIds              A vector of IDs identifying the exposures to include when computing
 #'                                 the expected count. If the
 #'                                 expsosure table is the drug_era table, these IDs correspond to
 #'                                 ingredient concept IDs. If the exposure table has the format of the
 #'                                 cohort table, these IDs correspond to the cohort definition IDs. If
 #'                                 left empty, all records in the exposure table will be used.
-#' @param outcomeIds               A vector of IDs identifying the outcomes to include when computing 
+#' @param outcomeIds               A vector of IDs identifying the outcomes to include when computing
 #'                                 the expected count.. If the outcome
 #'                                 table is the drug_era table, these IDs correspond to condition
 #'                                 concept IDs. If the outcomes table has the format of the cohort
@@ -117,113 +117,129 @@ getChronographData <- function(connectionDetails,
   periodLength <- 30
   numberOfPeriods <- 72
   periodStarts <- c(
-    seq(-periodLength*numberOfPeriods/2L, -1L, by=periodLength),
+    seq(-periodLength * numberOfPeriods / 2L, -1L, by = periodLength),
     0L,
-    seq(1L, 1L + periodLength * (-1L + numberOfPeriods/2L), by=periodLength)
+    seq(1L, 1L + periodLength * (-1L + numberOfPeriods / 2L), by = periodLength)
   )
   periodEnds <- periodStarts + periodLength - 1L
-  periodEnds[periodStarts==0L] <- 0L
-  periods <- data.frame(periodStart = periodStarts,
-                        periodEnd = periodEnds,
-                        periodId = c((-numberOfPeriods/2L):(-1L),0L,1L:(numberOfPeriods/2L)))
+  periodEnds[periodStarts == 0L] <- 0L
+  periods <- data.frame(
+    periodStart = periodStarts,
+    periodEnd = periodEnds,
+    periodId = c((-numberOfPeriods / 2L):(-1L), 0L, 1L:(numberOfPeriods / 2L))
+  )
   periodsForDb <- periods
   colnames(periodsForDb) <- SqlRender::camelCaseToSnakeCase(colnames(periodsForDb))
-  
+
   conn <- DatabaseConnector::connect(connectionDetails)
   on.exit(DatabaseConnector::disconnect(conn))
-  
+
   ParallelLogger::logTrace("Inserting tables of IDs")
-  DatabaseConnector::insertTable(connection = conn,
-                                 tableName = "#period",
-                                 data = periodsForDb,
-                                 dropTableIfExists = TRUE,
-                                 createTable = TRUE,
-                                 tempTable = TRUE,
-                                 tempEmulationSchema = tempEmulationSchema)
-  
+  DatabaseConnector::insertTable(
+    connection = conn,
+    tableName = "#period",
+    data = periodsForDb,
+    dropTableIfExists = TRUE,
+    createTable = TRUE,
+    tempTable = TRUE,
+    tempEmulationSchema = tempEmulationSchema
+  )
+
   if (is.null(exposureOutcomePairs)) {
     hasPairs <- FALSE
   } else {
     hasPairs <- TRUE
     colnames(exposureOutcomePairs) <- SqlRender::camelCaseToSnakeCase(colnames(exposureOutcomePairs))
-    DatabaseConnector::insertTable(connection = conn,
-                                   tableName = "#exposure_outcome_ids",
-                                   data = exposureOutcomePairs,
-                                   tempTable = TRUE,
-                                   dropTableIfExists = TRUE)
+    DatabaseConnector::insertTable(
+      connection = conn,
+      tableName = "#exposure_outcome_ids",
+      data = exposureOutcomePairs,
+      tempTable = TRUE,
+      dropTableIfExists = TRUE
+    )
   }
-  
-  sql <- SqlRender::loadRenderTranslateSql(sqlFilename = "CreateChronographData.sql",
-                                           packageName = "IcTemporalPatternDiscovery",
-                                           dbms = connectionDetails$dbms,
-                                           tempEmulationSchema = tempEmulationSchema,
-                                           cdm_database_schema = cdmDatabaseSchema,
-                                           exposure_database_schema = exposureDatabaseSchema,
-                                           exposure_table = exposureTable,
-                                           exposure_id_field = exposureIdField,
-                                           exposure_start_field = exposureStartField,
-                                           exposure_person_id_field = exposurePersonIdField,
-                                           outcome_database_schema = outcomeDatabaseSchema,
-                                           outcome_table = outcomeTable,
-                                           outcome_id_field = outcomeIdField,
-                                           outcome_start_field = outcomeStartField,
-                                           outcome_person_id_field = outcomePersonIdField,
-                                           exposure_ids = exposureIds,
-                                           outcome_ids = outcomeIds,
-                                           has_pairs = hasPairs)
+
+  sql <- SqlRender::loadRenderTranslateSql(
+    sqlFilename = "CreateChronographData.sql",
+    packageName = "IcTemporalPatternDiscovery",
+    dbms = connectionDetails$dbms,
+    tempEmulationSchema = tempEmulationSchema,
+    cdm_database_schema = cdmDatabaseSchema,
+    exposure_database_schema = exposureDatabaseSchema,
+    exposure_table = exposureTable,
+    exposure_id_field = exposureIdField,
+    exposure_start_field = exposureStartField,
+    exposure_person_id_field = exposurePersonIdField,
+    outcome_database_schema = outcomeDatabaseSchema,
+    outcome_table = outcomeTable,
+    outcome_id_field = outcomeIdField,
+    outcome_start_field = outcomeStartField,
+    outcome_person_id_field = outcomePersonIdField,
+    exposure_ids = exposureIds,
+    outcome_ids = outcomeIds,
+    has_pairs = hasPairs
+  )
   ParallelLogger::logInfo("Creating counts on server")
   DatabaseConnector::executeSql(conn, sql)
-  
+
   ParallelLogger::logInfo("Loading data server")
   sql <- "SELECT exposure_id, period_id, observed_count FROM #exposure"
   sql <- SqlRender::translate(sql,
-                              targetDialect = connectionDetails$dbms,
-                              tempEmulationSchema = tempEmulationSchema)
+    targetDialect = connectionDetails$dbms,
+    tempEmulationSchema = tempEmulationSchema
+  )
   exposure <- DatabaseConnector::querySql(conn, sql)
   colnames(exposure) <- SqlRender::snakeCaseToCamelCase(colnames(exposure))
-  
+
   sql <- "SELECT period_id, all_observed_count FROM #all_exposures"
   sql <- SqlRender::translate(sql,
-                              targetDialect = connectionDetails$dbms,
-                              tempEmulationSchema = tempEmulationSchema)
+    targetDialect = connectionDetails$dbms,
+    tempEmulationSchema = tempEmulationSchema
+  )
   all <- DatabaseConnector::querySql(conn, sql)
   colnames(all) <- SqlRender::snakeCaseToCamelCase(colnames(all))
-  
+
   sql <- "SELECT exposure_id, outcome_id, period_id, outcome_count FROM #exposure_outcome"
   sql <- SqlRender::translate(sql,
-                              targetDialect = connectionDetails$dbms,
-                              tempEmulationSchema = tempEmulationSchema)
+    targetDialect = connectionDetails$dbms,
+    tempEmulationSchema = tempEmulationSchema
+  )
   exposureOutcome <- DatabaseConnector::querySql(conn, sql)
   colnames(exposureOutcome) <- SqlRender::snakeCaseToCamelCase(colnames(exposureOutcome))
-  
+
   sql <- "SELECT outcome_id, period_id, all_outcome_count FROM #outcome"
   sql <- SqlRender::translate(sql,
-                              targetDialect = connectionDetails$dbms,
-                              tempEmulationSchema = tempEmulationSchema)
+    targetDialect = connectionDetails$dbms,
+    tempEmulationSchema = tempEmulationSchema
+  )
   outcome <- DatabaseConnector::querySql(conn, sql)
   colnames(outcome) <- SqlRender::snakeCaseToCamelCase(colnames(outcome))
-  
-  sql <- SqlRender::loadRenderTranslateSql(sqlFilename = "DropChronographTables.sql",
-                                           packageName = "IcTemporalPatternDiscovery",
-                                           dbms = connectionDetails$dbms,
-                                           tempEmulationSchema = tempEmulationSchema,
-                                           has_pairs = hasPairs)
+
+  sql <- SqlRender::loadRenderTranslateSql(
+    sqlFilename = "DropChronographTables.sql",
+    packageName = "IcTemporalPatternDiscovery",
+    dbms = connectionDetails$dbms,
+    tempEmulationSchema = tempEmulationSchema,
+    has_pairs = hasPairs
+  )
   DatabaseConnector::executeSql(conn, sql, progressBar = FALSE, reportOverallTime = FALSE)
-  
+
   result <- merge(all, exposure)
   result <- merge(result, outcome)
   result <- merge(exposureOutcome, result)
-  result$expectedCount <- result$observedCount * result$allOutcomeCount/result$allObservedCount
-  ic <- ic(obs = result$outcomeCount,
-           exp = result$expectedCount,
-           shape.add = shrinkage,
-           rate.add = shrinkage,
-           percentile = icPercentile)
-  
+  result$expectedCount <- result$observedCount * result$allOutcomeCount / result$allObservedCount
+  ic <- ic(
+    obs = result$outcomeCount,
+    exp = result$expectedCount,
+    shape.add = shrinkage,
+    rate.add = shrinkage,
+    percentile = icPercentile
+  )
+
   result$ic <- ic$ic
   result$icLow <- ic$ic_low
   result$icHigh <- ic$ic_high
-  
+
   delta <- Sys.time() - start
   ParallelLogger::logInfo(paste("Getting data took", signif(delta, 3), attr(delta, "units")))
   return(result)
@@ -255,7 +271,7 @@ plotChronograph <- function(data, exposureId, outcomeId, title = NULL, fileName 
   negData <- data[data$periodId < 0, ]
   posData <- data[data$periodId > 0, ]
   zeroData <- data[data$periodId == 0, ]
-  
+
   if (max(data$icHigh) + 0.5 < 1) {
     yMax <- 1
   } else {
@@ -267,67 +283,81 @@ plotChronograph <- function(data, exposureId, outcomeId, title = NULL, fileName 
     yMin <- max(data$icLow) - 1
   }
   topPlot <- with(data, ggplot2::ggplot() +
-                    ggplot2::geom_hline(yintercept = 0, color = "black", size = 0.2, linetype = 2) +
-                    ggplot2::geom_errorbar(ggplot2::aes(x = periodId, ymax = icHigh, ymin = icLow),
-                                           color = "grey50",
-                                           size = 0.35,
-                                           data = negData) +
-                    ggplot2::geom_errorbar(ggplot2::aes(x = periodId, ymax = icHigh, ymin = icLow),
-                                           color = "grey50",
-                                           size = 0.35,
-                                           data = posData) +
-                    ggplot2::geom_line(ggplot2::aes(x = periodId, y = ic),
-                                       color = rgb(0, 0, 0.8),
-                                       size = 0.7,
-                                       data = negData) +
-                    ggplot2::geom_line(ggplot2::aes(x = periodId, y = ic),
-                                       color = rgb(0, 0, 0.8),
-                                       size = 0.7,
-                                       data = posData) +
-                    ggplot2::geom_point(ggplot2::aes(x = periodId, y = ic),
-                                        color = rgb(0, 0, 0.8),
-                                        size = 6,
-                                        shape = "*",
-                                        data = zeroData) +
-                    ggplot2::scale_x_continuous(name = "Months relative to first prescription",
-                                                breaks = (-5:5) * 12) +
-                    ggplot2::ylab("IC") +
-                    ggplot2::coord_cartesian(ylim = c(yMin, yMax)) +
-                    ggplot2::theme(axis.title.x = ggplot2::element_blank())
-  )
-  
+    ggplot2::geom_hline(yintercept = 0, color = "black", size = 0.2, linetype = 2) +
+    ggplot2::geom_errorbar(ggplot2::aes(x = periodId, ymax = icHigh, ymin = icLow),
+      color = "grey50",
+      size = 0.35,
+      data = negData
+    ) +
+    ggplot2::geom_errorbar(ggplot2::aes(x = periodId, ymax = icHigh, ymin = icLow),
+      color = "grey50",
+      size = 0.35,
+      data = posData
+    ) +
+    ggplot2::geom_line(ggplot2::aes(x = periodId, y = ic),
+      color = rgb(0, 0, 0.8),
+      size = 0.7,
+      data = negData
+    ) +
+    ggplot2::geom_line(ggplot2::aes(x = periodId, y = ic),
+      color = rgb(0, 0, 0.8),
+      size = 0.7,
+      data = posData
+    ) +
+    ggplot2::geom_point(ggplot2::aes(x = periodId, y = ic),
+      color = rgb(0, 0, 0.8),
+      size = 6,
+      shape = "*",
+      data = zeroData
+    ) +
+    ggplot2::scale_x_continuous(
+      name = "Months relative to first prescription",
+      breaks = (-5:5) * 12
+    ) +
+    ggplot2::ylab("IC") +
+    ggplot2::coord_cartesian(ylim = c(yMin, yMax)) +
+    ggplot2::theme(axis.title.x = ggplot2::element_blank()))
+
   bottomPlot <- with(data, ggplot2::ggplot() +
-                       ggplot2::geom_bar(ggplot2::aes(x = periodId, y = outcomeCount, fill = "Observed"),
-                                         stat = "identity",
-                                         color = "black",
-                                         size = 0.4,
-                                         width = 1,
-                                         data = data) +
-                       ggplot2::geom_line(ggplot2::aes(x = periodId,
-                                                       y = expectedCount,
-                                                       color = "Expected"), size = 0.7, data = negData) +
-                       ggplot2::geom_line(ggplot2::aes(x = periodId, y = expectedCount),
-                                          color = rgb(0, 0, 0.8),
-                                          size = 0.7,
-                                          data = posData) +
-                       ggplot2::geom_point(ggplot2::aes(x = periodId, y = expectedCount),
-                                           color = rgb(0, 0, 0.8),
-                                           size = 6,
-                                           shape = "*",
-                                           data = zeroData) +
-                       ggplot2::scale_x_continuous(name = "Months relative to first exposure",
-                                                   breaks = (-5:5) * 12) +
-                       ggplot2::scale_fill_manual(name = "", values = c(rgb(0.3, 0.7, 0.8, alpha = 0.5))) +
-                       ggplot2::scale_color_manual(name = "", values = c(rgb(0, 0, 0.8))) +
-                       ggplot2::ylab("Number of outcomes") +
-                       ggplot2::theme(legend.justification = c(0, 1),
-                                      legend.position = c(0.8, 0.9),
-                                      legend.direction = "horizontal",
-                                      legend.box = "vertical",
-                                      legend.key.height = ggplot2::unit(0.4, units = "lines"),
-                                      legend.key = ggplot2::element_rect(fill = "transparent", color = NA),
-                                      legend.background = ggplot2::element_rect(fill = "white", color = "black", size = 0.2))
-  )
+    ggplot2::geom_bar(ggplot2::aes(x = periodId, y = outcomeCount, fill = "Observed"),
+      stat = "identity",
+      color = "black",
+      size = 0.4,
+      width = 1,
+      data = data
+    ) +
+    ggplot2::geom_line(ggplot2::aes(
+      x = periodId,
+      y = expectedCount,
+      color = "Expected"
+    ), size = 0.7, data = negData) +
+    ggplot2::geom_line(ggplot2::aes(x = periodId, y = expectedCount),
+      color = rgb(0, 0, 0.8),
+      size = 0.7,
+      data = posData
+    ) +
+    ggplot2::geom_point(ggplot2::aes(x = periodId, y = expectedCount),
+      color = rgb(0, 0, 0.8),
+      size = 6,
+      shape = "*",
+      data = zeroData
+    ) +
+    ggplot2::scale_x_continuous(
+      name = "Months relative to first exposure",
+      breaks = (-5:5) * 12
+    ) +
+    ggplot2::scale_fill_manual(name = "", values = c(rgb(0.3, 0.7, 0.8, alpha = 0.5))) +
+    ggplot2::scale_color_manual(name = "", values = c(rgb(0, 0, 0.8))) +
+    ggplot2::ylab("Number of outcomes") +
+    ggplot2::theme(
+      legend.justification = c(0, 1),
+      legend.position = c(0.8, 0.9),
+      legend.direction = "horizontal",
+      legend.box = "vertical",
+      legend.key.height = ggplot2::unit(0.4, units = "lines"),
+      legend.key = ggplot2::element_rect(fill = "transparent", color = NA),
+      legend.background = ggplot2::element_rect(fill = "white", color = "black", size = 0.2)
+    ))
   plots <- list(topPlot, bottomPlot)
   grobs <- widths <- list()
   for (i in 1:length(plots)) {
@@ -339,9 +369,10 @@ plotChronograph <- function(data, exposureId, outcomeId, title = NULL, fileName 
     grobs[[i]]$widths[2:5] <- as.list(maxwidth)
   }
   plot <- gridExtra::grid.arrange(grobs[[1]], grobs[[2]], top = grid::textGrob(title))
-  
-  
-  if (!is.null(fileName))
+
+
+  if (!is.null(fileName)) {
     ggplot2::ggsave(fileName, plot, width = 7, height = 5, dpi = 400)
+  }
   return(plot)
 }

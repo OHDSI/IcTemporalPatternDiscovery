@@ -1,6 +1,6 @@
 # @file RunAnalyses.R
 #
-# Copyright 2019 Observational Health Data Sciences and Informatics
+# Copyright 2022 Observational Health Data Sciences and Informatics
 #
 # This file is part of IcTemporalPatternDiscovery
 #
@@ -91,14 +91,17 @@ runIctpdAnalyses <- function(connectionDetails,
   if (length(uniqueAnalysisIds) != length(ictpdAnalysisList)) {
     stop("Duplicate analysis IDs are not allowed")
   }
-  if (!file.exists(outputFolder))
+  if (!file.exists(outputFolder)) {
     dir.create(outputFolder)
+  }
 
   ### Create reference table ###
   resultsReference <- data.frame()
-  loadingArgsList <- unique(ParallelLogger::selectFromList(ictpdAnalysisList, c("getDbIctpdDataArgs",
-                                                                             "exposureType",
-                                                                             "outcomeType")))
+  loadingArgsList <- unique(ParallelLogger::selectFromList(ictpdAnalysisList, c(
+    "getDbIctpdDataArgs",
+    "exposureType",
+    "outcomeType"
+  )))
   for (i in 1:length(loadingArgsList)) {
     loadingArgs <- loadingArgsList[[i]]
     ictpdDataFile <- .createIctpdDataFileName(outputFolder, i)
@@ -109,12 +112,14 @@ runIctpdAnalyses <- function(connectionDetails,
       for (ictpdAnalysis in ictpdAnalysisSubset) {
         ictpdResultsFile <- .createIctpdResultsFileName(outputFolder, ictpdAnalysis$analysisId)
 
-        resultsReferenceRow <- data.frame(analysisId = ictpdAnalysis$analysisId,
-                                          exposureId = exposureId,
-                                          outcomeId = outcomeId,
-                                          ictpdDataFile = ictpdDataFile,
-                                          ictpdResultsFile = ictpdResultsFile,
-                                          stringsAsFactors = FALSE)
+        resultsReferenceRow <- data.frame(
+          analysisId = ictpdAnalysis$analysisId,
+          exposureId = exposureId,
+          outcomeId = outcomeId,
+          ictpdDataFile = ictpdDataFile,
+          ictpdResultsFile = ictpdResultsFile,
+          stringsAsFactors = FALSE
+        )
         resultsReference <- rbind(resultsReference, resultsReferenceRow)
       }
     }
@@ -126,26 +131,32 @@ runIctpdAnalyses <- function(connectionDetails,
   for (ictpdDataFile in unique(resultsReference$ictpdDataFile)) {
     if (ictpdDataFile != "" && !file.exists((ictpdDataFile))) {
       refRow <- resultsReference[resultsReference$ictpdDataFile == ictpdDataFile, ][1, ]
-      analysisRow <- ParallelLogger::matchInList(ictpdAnalysisList,
-                                              list(analysisId = refRow$analysisId))[[1]]
+      analysisRow <- ParallelLogger::matchInList(
+        ictpdAnalysisList,
+        list(analysisId = refRow$analysisId)
+      )[[1]]
       getDbIctpdDataArgs <- analysisRow$getDbIctpdDataArgs
       # Cheap trick to find all unique combinations of exposureId and outcomeId:
       subset <- resultsReference[resultsReference$ictpdDataFile == ictpdDataFile, ]
       subset$dummy <- 1
       exposureOutcomePairs <- aggregate(dummy ~ exposureId + outcomeId, data = subset, mean)
 
-      args <- list(connectionDetails = connectionDetails,
-                   cdmDatabaseSchema = cdmDatabaseSchema,
-                   oracleTempSchema = oracleTempSchema,
-                   exposureDatabaseSchema = exposureDatabaseSchema,
-                   exposureTable = exposureTable,
-                   outcomeDatabaseSchema = outcomeDatabaseSchema,
-                   outcomeTable = outcomeTable,
-                   cdmVersion = cdmVersion,
-                   exposureOutcomePairs = exposureOutcomePairs)
+      args <- list(
+        connectionDetails = connectionDetails,
+        cdmDatabaseSchema = cdmDatabaseSchema,
+        oracleTempSchema = oracleTempSchema,
+        exposureDatabaseSchema = exposureDatabaseSchema,
+        exposureTable = exposureTable,
+        outcomeDatabaseSchema = outcomeDatabaseSchema,
+        outcomeTable = outcomeTable,
+        cdmVersion = cdmVersion,
+        exposureOutcomePairs = exposureOutcomePairs
+      )
       args <- append(args, getDbIctpdDataArgs)
-      objectsToCreate[[length(objectsToCreate) + 1]] <- list(args = args,
-                                                             ictpdDataFile = ictpdDataFile)
+      objectsToCreate[[length(objectsToCreate) + 1]] <- list(
+        args = args,
+        ictpdDataFile = ictpdDataFile
+      )
     }
   }
   createIctpdDataObject <- function(params) {
@@ -164,14 +175,18 @@ runIctpdAnalyses <- function(connectionDetails,
   for (ictpdResultsFile in unique(resultsReference$ictpdResultsFile)) {
     if (ictpdResultsFile != "" && !file.exists((ictpdResultsFile))) {
       refRow <- resultsReference[resultsReference$ictpdResultsFile == ictpdResultsFile, ][1, ]
-      analysisRow <- ParallelLogger::matchInList(ictpdAnalysisList,
-                                              list(analysisId = refRow$analysisId))[[1]]
+      analysisRow <- ParallelLogger::matchInList(
+        ictpdAnalysisList,
+        list(analysisId = refRow$analysisId)
+      )[[1]]
       args <- analysisRow$calculateStatisticsIcArgs
       ictpdDataFile <- refRow$ictpdDataFile
 
-      objectsToCreate[[length(objectsToCreate) + 1]] <- list(args = args,
-                                                             ictpdDataFile = ictpdDataFile,
-                                                             ictpdResultsFile = ictpdResultsFile)
+      objectsToCreate[[length(objectsToCreate) + 1]] <- list(
+        args = args,
+        ictpdDataFile = ictpdDataFile,
+        ictpdResultsFile = ictpdResultsFile
+      )
     }
   }
   createIctpdResults <- function(params) {
@@ -229,5 +244,3 @@ summarizeAnalyses <- function(resultsReference) {
   }
   return(result)
 }
-
-
