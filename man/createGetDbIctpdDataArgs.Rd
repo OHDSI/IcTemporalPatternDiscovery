@@ -13,21 +13,19 @@ createGetDbIctpdDataArgs(
 )
 }
 \arguments{
-\item{controlPeriodStart}{start of the control period - can be set between -99999 and0,
-default is -1080.}
+\item{controlPeriodStart}{start of the control period - can be set between -99999 and 0, default
+is -1080.}
 
-\item{controlPeriodEnd}{end of the control period - can be set between -99999 and0,
-default is -361.}
+\item{controlPeriodEnd}{end of the control period - can be set between -99999 and 0, default is
+-361.}
 
-\item{riskPeriodStart}{start of the risk period - can be set between 0 and
-99999,default is 1.}
+\item{riskPeriodStart}{start of the risk period - can be set between 0 and 99999, default is 1.}
 
-\item{riskPeriodEnd}{end of the risk period - can be set between 0 and 99999,default
-is 30.}
+\item{riskPeriodEnd}{end of the risk period - can be set between 0 and 99999, default is 30.}
 
-\item{censor}{a flag indicating wether the method should censor theobservation
-period at the end of exposure or not. Availableinput is 0 or 1
-with default = 0.}
+\item{censor}{a flag indicating wether the method should censor the observation period
+at the end of exposure or not. Available input is 0 or 1 with default =
+0.}
 }
 \description{
 Create a parameter object for the function getDbIctpdData
